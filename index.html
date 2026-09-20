@@ -4,8 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>图片标记工具 — 光伏组件 EL 点位标注</title>
-<link rel="icon" type="image/png" sizes="131x96" href="../images/favicon.png">
-<link rel="icon" type="image/png" sizes="43x32" href="../images/favicon-32.png">
+<link rel="icon" type="image/png" href="images/favicon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+SC:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -54,16 +53,12 @@ body {
   display: flex; align-items: center; gap: 8px;
   font-weight: 700; font-size: 14px; margin-right: 6px; white-space: nowrap;
 }
-.brand .logo {
-  width: 26px; height: 26px; border-radius: 7px;
-  background: #fff; overflow: hidden; flex-shrink: 0;
-  display: flex; align-items: center; justify-content: center;
-}
-.brand .logo img { width: 100%; height: 100%; object-fit: contain; }
+.brand-logo { height: 34px; width: auto; display: block; flex-shrink: 0; object-fit: contain; mix-blend-mode: multiply; }
 .tgroup {
   display: flex; align-items: center; gap: 4px;
   padding: 0 6px; border-right: 1px solid var(--border);
 }
+.tgroup-push { margin-left: auto; }
 .tgroup:first-of-type { padding-left: 0; }
 .tgroup:last-of-type { border-right: none; }
 
@@ -88,10 +83,23 @@ body {
   position: absolute; top: calc(100% + 6px); left: 0; z-index: 300;
   min-width: 152px; background: var(--panel); border: 1px solid var(--border2);
   border-radius: 10px; padding: 4px; box-shadow: 0 8px 30px rgba(30,58,95,0.20);
-  display: none;
+  opacity: 0; visibility: hidden; transform: translateY(-6px) scale(0.98);
+  transform-origin: top left; pointer-events: none;
+  transition: opacity .18s ease, transform .18s ease, visibility .18s;
 }
-.dropdown.open .dropdown-menu { display: block; }
+.dropdown.open .dropdown-menu {
+  opacity: 1; visibility: visible; transform: translateY(0) scale(1);
+  pointer-events: auto;
+}
 .dropdown .caret { font-size: 9px; opacity: .55; margin-left: 2px; }
+.menu-wide { min-width: 224px; }
+.dd-slider {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 11px; font-size: 12px; color: var(--text2); white-space: nowrap;
+}
+.dd-slider > span:first-child { min-width: 40px; }
+.dd-slider input[type=range] { flex: 1; min-width: 110px; accent-color: var(--accent); cursor: pointer; }
+.dd-slider .val { min-width: 34px; text-align: right; color: var(--text); font-variant-numeric: tabular-nums; }
 .ico-svg { width: 15px; height: 15px; flex-shrink: 0; }
 .ctx-item svg { width: 14px; height: 14px; vertical-align: -2px; margin-right: 7px; }
 .color-row .icon-btn svg { width: 13px; height: 13px; vertical-align: -1px; }
@@ -226,20 +234,54 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
-/* 空状态提示 */
+/* 空状态提示（文件上传拖拽区） */
 .drop-hint {
   position: absolute; inset: 0; display: flex; flex-direction: column;
   align-items: center; justify-content: center; gap: 14px;
   color: var(--text2); z-index: 6; cursor: pointer; text-align: center; padding: 20px;
 }
 .drop-hint.hidden { display: none; }
-.drop-hint .big { font-size: 44px; }
+.file-upload-design {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 12px; width: 340px; min-height: 240px; max-width: 92%;
+  padding: 40px 34px; border-radius: 22px;
+  background: rgba(255, 255, 255, 0.78);
+  border: 2px dashed rgba(47, 128, 237, 0.5);
+  box-shadow: 0 10px 30px -14px rgba(30, 58, 95, 0.28);
+  cursor: pointer;
+  transition: transform .25s ease, box-shadow .25s ease, border-color .2s, background .2s;
+  animation: cardIn .5s ease backwards;
+}
+.file-upload-design:hover {
+  border-color: var(--accent);
+  background: rgba(255, 255, 255, 0.96);
+  transform: translateY(-6px);
+  box-shadow: 0 24px 50px -18px rgba(30, 58, 95, 0.38), 0 10px 22px -10px rgba(47, 128, 237, 0.28);
+}
+.upload-cloud {
+  height: 52px; width: auto; color: var(--accent);
+  animation: cloudFloat 3s ease-in-out infinite;
+}
+.browse-button {
+  display: inline-block; background: var(--accent); color: #fff;
+  padding: 8px 18px; border-radius: 10px; font-size: 14px; font-weight: 600;
+  transition: background .25s, transform .25s ease, box-shadow .25s ease;
+}
+.browse-button:hover { background: var(--accent2); transform: translateY(-1px); box-shadow: 0 6px 14px -4px rgba(29, 111, 224, 0.5); }
 .drop-hint .t1 { font-size: 16px; color: var(--text); font-weight: 600; }
-.drop-hint .t2 { font-size: 13px; color: var(--text3); max-width: 460px; }
+.drop-hint .t2 { font-size: 13px; color: var(--text3); max-width: 380px; }
+@keyframes cloudFloat {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-7px); }
+}
+@keyframes cardIn {
+  from { opacity: 0; transform: translateY(14px) scale(0.97); }
+  to { opacity: 1; transform: none; }
+}
 
 /* Toast */
 .toast {
-  position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%) translateY(20px);
+  position: fixed; left: 50%; top: 60px; transform: translateX(-50%) translateY(-16px);
   background: #17314f; border: 1px solid rgba(30,58,95,0.3); color: #fff;
   padding: 10px 18px; border-radius: 10px; font-size: 13px; z-index: 100;
   opacity: 0; pointer-events: none; transition: all .25s; box-shadow: 0 8px 30px rgba(30,58,95,0.28);
@@ -262,6 +304,28 @@ body {
   border-radius: 8px; padding: 8px 10px; font-size: 16px; width: 100%; font-family: inherit;
 }
 .modal-actions { display: flex; gap: 8px; justify-content: flex-end; }
+/* 退出/刷新确认弹窗（防误操作） */
+.exit-box {
+  width: 320px; align-items: center; text-align: center;
+  padding: 28px 26px 20px; gap: 6px; animation: exitPop .22s ease;
+}
+.exit-icon {
+  width: 54px; height: 54px; border-radius: 50%; margin-bottom: 6px;
+  background: rgba(226, 74, 79, 0.12); color: var(--danger);
+  display: flex; align-items: center; justify-content: center;
+}
+.exit-icon svg { width: 28px; height: 28px; }
+.exit-title { font-size: 17px; font-weight: 700; color: var(--text); }
+.exit-text { font-size: 13px; color: var(--text2); line-height: 1.65; }
+.exit-text strong { color: var(--danger); font-weight: 700; }
+.exit-box .modal-actions { width: 100%; margin-top: 10px; }
+.exit-box .modal-actions .tbtn { flex: 1; justify-content: center; padding: 9px 0; font-size: 14px; }
+.tbtn.danger-solid { background: var(--danger); border-color: var(--danger); color: #fff; }
+.tbtn.danger-solid:hover { background: #cf3d42; border-color: #cf3d42; }
+@keyframes exitPop {
+  from { opacity: 0; transform: translateY(10px) scale(0.92); }
+  to { opacity: 1; transform: none; }
+}
 .text-opts { display: flex; gap: 10px; }
 .text-opt { flex: 1; display: flex; flex-direction: column; gap: 4px; }
 .text-opt > span { font-size: 12px; color: var(--text2); }
@@ -319,18 +383,61 @@ body {
 .loading-overlay .loading-text { font-size: 14px; color: var(--text); font-weight: 600; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
+/* ===== 悬浮玻璃工具栏（CanvasToolbar） ===== */
+.float-toolbar {
+  position: absolute; left: 50%; bottom: 16px; transform: translateX(-50%);
+  display: flex; align-items: center; gap: 2px; padding: 5px;
+  background: rgba(255, 255, 255, 0.58);
+  -webkit-backdrop-filter: blur(16px) saturate(170%);
+  backdrop-filter: blur(16px) saturate(170%);
+  border: 1px solid rgba(30, 58, 95, 0.12);
+  border-radius: 14px;
+  box-shadow: 0 10px 34px rgba(30, 58, 95, 0.24), inset 0 0 0 1px rgba(255, 255, 255, 0.25);
+  z-index: 15;
+}
+.float-toolbar.hidden { display: none; }
+.float-toolbar .fbtn {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 40px; height: 36px; padding: 0;
+  border: none; background: transparent; border-radius: 10px;
+  color: var(--text2); cursor: pointer;
+  transition: background .15s, color .15s, box-shadow .15s;
+  font-family: inherit;
+}
+.float-toolbar .fbtn svg { width: 19px; height: 19px; }
+.float-toolbar .fbtn:hover { background: rgba(30, 58, 95, 0.08); color: var(--text); }
+.float-toolbar .fbtn.active {
+  background: var(--accent); color: #fff;
+  box-shadow: 0 2px 10px rgba(47, 128, 237, 0.45);
+}
+/* 角落缺口：提示"还有更多"，点击折叠/展开（折叠后只显示当前工具） */
+.float-toolbar .fbtn.notch {
+  position: absolute; right: -7px; bottom: -7px;
+  width: 18px; height: 18px; border-radius: 0; background: transparent;
+}
+.float-toolbar .fbtn.notch:hover { background: transparent; }
+.float-toolbar .fbtn.notch::after {
+  content: ""; position: absolute; right: 0; bottom: 0;
+  border-left: 7px solid transparent;
+  border-bottom: 7px solid var(--text);
+  opacity: 0.35; transition: opacity .15s;
+}
+.float-toolbar .fbtn.notch:hover::after { opacity: 0.7; }
+.float-toolbar.collapsed .fbtn:not(.active):not(.notch) { display: none; }
+
 @media (max-width: 760px) {
   .panel { width: 160px; }
+  .float-toolbar .fbtn { width: 34px; height: 32px; }
+  .float-toolbar .fbtn svg { width: 17px; height: 17px; }
 }
 </style>
 </head>
 <body>
 
 <header class="toolbar">
-  <div class="brand"><span class="logo"><img src="../images/logo.png" alt="图片标记工具"></span><span>图片标记工具</span><span id="verTag" style="font-size:11px;color:#8aa0b4;margin-left:6px;font-weight:400">v1.5</span></div>
+  <div class="brand"><img src="images/logo.png" alt="图片标记工具" class="brand-logo"></div>
 
-  <div class="tgroup">
-    <button class="tbtn primary" id="btnUpload" title="上传/拖拽图片"><svg class="ico-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4"/><path d="M6 10l6-6 6 6"/><path d="M4 20h16"/></svg>上传图片</button>
+  <div class="tgroup tgroup-push">
     <button class="tbtn" id="btnUndo" title="撤销上一步 (Ctrl+Z)"><svg class="ico-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/></svg>撤销</button>
     <button class="tbtn" id="btnReset" title="图片适应窗口大小"><svg class="ico-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 2.6-6.4L3 8"/><path d="M3 3v5h5"/></svg>重置视图</button>
     <button class="tbtn danger" id="btnClear" title="清空全部标注点"><svg class="ico-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>清空</button>
@@ -338,31 +445,21 @@ body {
 
   <div class="tgroup">
     <button class="tbtn" id="btnGrab" title="抓手：拖拽移动图片，防止误加点"><svg class="ico-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 11V6a2 2 0 0 0-4 0v5"/><path d="M14 10V4a2 2 0 0 0-4 0v2"/><path d="M10 10.5V6a2 2 0 0 0-4 0v8"/><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"/></svg>抓手</button>
-    <div class="dropdown" id="modeDropdown">
-      <button class="tbtn" id="btnModeMenu" title="标注模式">
-        <svg class="ico-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/></svg>
-        <span id="modeMenuLabel">点</span><span class="caret">▾</span>
-      </button>
-      <div class="dropdown-menu" id="modeMenu">
-        <button class="dd-item" id="btnPointMode" data-mode="point"><svg class="ico-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="1.5"/></svg>点标注</button>
-        <button class="dd-item" id="btnBoxMode" data-mode="box"><svg class="ico-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="4.5" width="17" height="15" rx="2"/></svg>框选</button>
-        <div class="dd-sub">
-          <div class="dd-item dd-sub-trigger" id="btnPenGroup"><svg class="ico-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>标注<span class="caret-r">▸</span></div>
-          <div class="dd-submenu">
-            <button class="dd-item" id="btnPenMode" data-mode="pen"><svg class="ico-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>标注笔</button>
-            <button class="dd-item" id="btnFrameMode" data-mode="frame"><svg class="ico-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8V4h4M16 4h4v4M20 16v4h-4M8 20H4v-4"/></svg>框图</button>
-            <button class="dd-item" id="btnTextMode" data-mode="text"><svg class="ico-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7V5h16v2"/><path d="M12 5v14"/><path d="M8 19h8"/></svg>文字</button>
-          </div>
-        </div>
-      </div>
-    </div>
     <input type="color" id="toolColorInput" value="#3b82f6" title="画笔/框图/文字颜色" class="tool-color">
   </div>
 
   <div class="tgroup">
-    <button class="tbtn" id="btnLabels" title="开关标注数字显示" aria-pressed="true"><svg class="ico-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 5 6 19M17 5l-2 14M4 9h15M3 15h15"/></svg>显示数字</button>
-    <div class="slider-group"><span>点大小</span><input type="range" id="pointSizeRange" min="6" max="30" step="1" value="16"><span class="val" id="pointSizeVal">16px</span></div>
-    <div class="slider-group"><span>透明度</span><input type="range" id="opacityRange" min="10" max="100" step="1" value="100"><span class="val" id="opacityVal">100%</span></div>
+    <div class="dropdown" id="viewDropdown">
+      <button class="tbtn" id="btnViewMenu" title="显示设置">
+        <svg class="ico-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+        <span>显示</span><span class="caret">▾</span>
+      </button>
+      <div class="dropdown-menu menu-wide" id="viewMenu">
+        <button class="dd-item" id="btnLabels" title="开关标注数字显示" aria-pressed="true"><svg class="ico-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 5 6 19M17 5l-2 14M4 9h15M3 15h15"/></svg>显示数字</button>
+        <div class="dd-slider"><span>点大小</span><input type="range" id="pointSizeRange" min="6" max="30" step="1" value="16"><span class="val" id="pointSizeVal">16px</span></div>
+        <div class="dd-slider"><span>透明度</span><input type="range" id="opacityRange" min="10" max="100" step="1" value="100"><span class="val" id="opacityVal">100%</span></div>
+      </div>
+    </div>
   </div>
 
   <div class="tgroup">
@@ -388,9 +485,21 @@ body {
   <canvas id="overlay"></canvas>
 
   <div class="drop-hint" id="dropHint">
-    <div class="big">🖼️</div>
-    <div class="t1">拖拽图片到此处，或点击上传</div>
-    <div class="t2">支持 JPG / PNG / WEBP / TIF · 滚轮缩放 · 点/框两种标注 · 点击已有点或框删除 · 空格+左键平移 · Ctrl+Z 撤销 · 可导出/导入 CSV 与标注图片</div>
+    <div class="file-upload-design">
+      <svg class="upload-cloud" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96z"/></svg>
+      <div class="t1">拖拽图片 / PDF 到此处</div>
+      <span class="browse-button">浏览本地图片</span>
+      <div class="t2">支持 JPG / PNG / WEBP / TIF / PDF · 滚轮缩放 · 点/框/笔/框图/文字标注 · Ctrl+Z 撤销 · 可导出/导入 CSV 与标注图片</div>
+    </div>
+  </div>
+
+  <div class="float-toolbar hidden" id="floatToolbar">
+    <button class="fbtn" id="btnPointMode" data-mode="point" title="点标注"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="1.5"/></svg></button>
+    <button class="fbtn" id="btnBoxMode" data-mode="box" title="框选"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="4.5" width="17" height="15" rx="2"/></svg></button>
+    <button class="fbtn" id="btnPenMode" data-mode="pen" title="标注笔"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg></button>
+    <button class="fbtn" id="btnFrameMode" data-mode="frame" title="框图"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8V4h4M16 4h4v4M20 16v4h-4M8 20H4v-4"/></svg></button>
+    <button class="fbtn" id="btnTextMode" data-mode="text" title="文字"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7V5h16v2"/><path d="M12 5v14"/><path d="M8 19h8"/></svg></button>
+    <button class="fbtn notch" id="floatNotch" title="折叠/展开工具栏" aria-label="折叠或展开工具栏"></button>
   </div>
 
   <aside class="panel color-panel" id="colorPanel">
@@ -424,7 +533,7 @@ body {
 
 <div class="toast" id="toast"></div>
 <div class="hover-tip" id="hoverTip"></div>
-<input type="file" id="fileInput" accept="image/*,.tif,.tiff" hidden>
+<input type="file" id="fileInput" accept="image/*,.tif,.tiff,.pdf,application/pdf" hidden>
 <input type="file" id="csvInput" accept=".csv,text/csv" hidden>
 
 <div class="modal-overlay" id="countModal" style="display:none">
@@ -449,6 +558,18 @@ body {
     <div class="modal-actions">
       <button class="tbtn" id="textCancel"><svg class="ico-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>取消</button>
       <button class="tbtn primary" id="textOk"><svg class="ico-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>确定</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="exitModal" style="display:none">
+  <div class="modal-box exit-box">
+    <div class="exit-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg></div>
+    <div class="modal-title exit-title">确定要离开吗？</div>
+    <div class="exit-text">当前有 <strong id="exitCount">0</strong> 个标注尚未导出，刷新或关闭页面后将丢失。</div>
+    <div class="modal-actions">
+      <button class="tbtn" id="exitCancel">取消</button>
+      <button class="tbtn danger-solid" id="exitOk">离开</button>
     </div>
   </div>
 </div>
@@ -492,6 +613,8 @@ body {
 //# sourceMappingURL=/sm/2e39ea5b7b630a4077c9cc34fbb99ed4dfe44c1d0aa7f1483c8a04556f1534a3.map
 </script>
 
+<script src="lib/pdf.min.js"></script>
+<script src="lib/pdf.worker.min.js"></script>
 <script>
 (function () {
   'use strict';
@@ -524,7 +647,6 @@ body {
   var pointSizeVal = document.getElementById('pointSizeVal');
   var opacityRange = document.getElementById('opacityRange');
   var opacityVal = document.getElementById('opacityVal');
-  var btnUpload = document.getElementById('btnUpload');
   var btnUndo = document.getElementById('btnUndo');
   var btnReset = document.getElementById('btnReset');
   var btnClear = document.getElementById('btnClear');
@@ -540,13 +662,12 @@ body {
   var btnTextMode = document.getElementById('btnTextMode');
   var btnGrab = document.getElementById('btnGrab');
   var btnFrameMode = document.getElementById('btnFrameMode');
-  var modeDropdown = document.getElementById('modeDropdown');
   var exportDropdown = document.getElementById('exportDropdown');
-  var btnModeMenu = document.getElementById('btnModeMenu');
   var btnExportMenu = document.getElementById('btnExportMenu');
-  var modeMenu = document.getElementById('modeMenu');
   var exportMenu = document.getElementById('exportMenu');
-  var modeMenuLabel = document.getElementById('modeMenuLabel');
+  var viewDropdown = document.getElementById('viewDropdown');
+  var btnViewMenu = document.getElementById('btnViewMenu');
+  var viewMenu = document.getElementById('viewMenu');
   var csvInput = document.getElementById('csvInput');
   var overlay = document.getElementById('overlay');
   var statPointCount = document.getElementById('statPointCount');
@@ -578,7 +699,12 @@ body {
   var toolColorInput = document.getElementById('toolColorInput');
   var ctxToolColor = document.getElementById('ctxToolColor');
   var ctxToolColorRow = document.getElementById('ctxToolColorRow');
-  var btnPenGroup = document.getElementById('btnPenGroup');
+  var floatToolbar = document.getElementById('floatToolbar');
+  var floatNotch = document.getElementById('floatNotch');
+  var exitModal = document.getElementById('exitModal');
+  var exitCancel = document.getElementById('exitCancel');
+  var exitOk = document.getElementById('exitOk');
+  var exitCount = document.getElementById('exitCount');
 
   // ===== 状态 =====
   var img = null;
@@ -717,7 +843,7 @@ body {
         settings: {
           pointSize: pointSize, opacity: opacity, showLabels: showLabels,
           currentColor: currentColor, colorMeta: colorMeta, customOrder: customOrder,
-          toolColor: toolColor, paletteV: PALETTE_VERSION
+          toolColor: toolColor, markMode: markMode, paletteV: PALETTE_VERSION
         },
         session: img ? {
           name: currentImgName, w: imgW, h: imgH, points: points
@@ -735,6 +861,7 @@ body {
       if (typeof s.pointSize === 'number') pointSize = s.pointSize;
       if (typeof s.opacity === 'number') opacity = s.opacity;
       if (typeof s.showLabels === 'boolean') showLabels = s.showLabels;
+      if (s.markMode && ['point', 'box', 'pen', 'frame', 'text'].indexOf(s.markMode) >= 0) markMode = s.markMode;
       if (s.currentColor) currentColor = s.currentColor;
       if (s.toolColor) toolColor = s.toolColor;
       if (s.paletteV === PALETTE_VERSION) {
@@ -1496,17 +1623,13 @@ body {
     btnLabels.setAttribute('aria-pressed', String(showLabels));
     btnGrab.classList.toggle('active', panMode);
     mainEl.classList.toggle('grab', panMode);
-    btnModeMenu.classList.toggle('active', !panMode);
 
-    // 标注模式
+    // 标注模式（悬浮玻璃工具栏按钮高亮）
     btnPointMode.classList.toggle('active', markMode === 'point');
     btnBoxMode.classList.toggle('active', markMode === 'box');
     btnPenMode.classList.toggle('active', markMode === 'pen');
     btnFrameMode.classList.toggle('active', markMode === 'frame');
     btnTextMode.classList.toggle('active', markMode === 'text');
-    btnPenGroup.classList.toggle('active', markMode === 'pen' || markMode === 'frame' || markMode === 'text');
-    modeMenuLabel.textContent =
-      markMode === 'box' ? '框选' : (markMode === 'pen' ? '标注笔' : (markMode === 'frame' ? '框图' : (markMode === 'text' ? '文字' : '点')));
 
     // 文件标签
     fileLabel.textContent = img ? currentImgName : '未加载图片';
@@ -1883,21 +2006,26 @@ body {
     return name.slice(-4) === '.tif' || name.slice(-5) === '.tiff' || file.type === 'image/tiff';
   }
 
+  function isPdf(file) {
+    var name = (file.name || '').toLowerCase();
+    return name.slice(-4) === '.pdf' || file.type === 'application/pdf';
+  }
+
   function showLoading() { if (loadingOverlay) loadingOverlay.style.display = 'flex'; }
   function hideLoading() { if (loadingOverlay) loadingOverlay.style.display = 'none'; }
   function loadImageFromFile(file) {
-    if (!file || (!file.type && !isTiff(file))) {
-      toast('请选择图片文件'); return;
-    }
-    if (file.type && file.type.indexOf('image/') !== 0 && !isTiff(file)) {
-      toast('请选择图片文件'); return;
+    var isImg = file && file.type && file.type.indexOf('image/') === 0;
+    if (!file || (!isImg && !isTiff(file) && !isPdf(file))) {
+      toast('请选择图片或 PDF 文件'); return;
     }
     if (points.length && currentImgName && file.name !== currentImgName) {
-      if (!confirm('当前有 ' + points.length + ' 个标注，加载新图片将清除。是否继续？')) return;
+      if (!confirm('当前有 ' + points.length + ' 个标注，加载新文件将清除。是否继续？')) return;
     }
     showLoading();
     if (isTiff(file)) {
       loadTiff(file);
+    } else if (isPdf(file)) {
+      loadPdf(file);
     } else {
       loadRaster(file);
     }
@@ -1937,6 +2065,45 @@ body {
     reader.readAsArrayBuffer(file);
   }
 
+  // PDF 走 PDF.js 渲染首帧
+  function loadPdf(file) {
+    var reader = new FileReader();
+    reader.onload = function () {
+      setTimeout(function () {
+        if (typeof pdfjsLib === 'undefined') {
+          hideLoading();
+          toast('PDF 组件缺失（lib 目录不完整），请改用图片格式');
+          return;
+        }
+        try {
+          if (pdfjsLib.GlobalWorkerOptions && !pdfjsLib.GlobalWorkerOptions.workerSrc) {
+            pdfjsLib.GlobalWorkerOptions.workerSrc = 'lib/pdf.worker.min.js';
+          }
+          pdfjsLib.getDocument({ data: reader.result }).promise.then(function (pdf) {
+            return pdf.getPage(1).then(function (page) {
+              var viewport = page.getViewport({ scale: 2 });
+              var canvas = document.createElement('canvas');
+              canvas.width = Math.floor(viewport.width);
+              canvas.height = Math.floor(viewport.height);
+              var ctx = canvas.getContext('2d');
+              return page.render({ canvasContext: ctx, viewport: viewport }).promise.then(function () {
+                commitImage(canvas, file.name, canvas.width, canvas.height, null);
+              });
+            });
+          }).catch(function (e) {
+            hideLoading();
+            toast('PDF 解析失败：' + (e && e.message ? e.message : '未知错误'));
+          });
+        } catch (e) {
+          hideLoading();
+          toast('PDF 解析失败：' + (e && e.message ? e.message : '未知错误'));
+        }
+      }, 30);
+    };
+    reader.onerror = function () { hideLoading(); toast('文件读取失败'); };
+    reader.readAsArrayBuffer(file);
+  }
+
   function commitImage(source, name, w, h, url) {
     hideLoading();
     if (imgUrl) URL.revokeObjectURL(imgUrl);
@@ -1946,6 +2113,7 @@ body {
     imgH = h;
     currentImgName = name;
     dropHint.classList.add('hidden');
+    floatToolbar.classList.remove('hidden');
 
     var saved = peekSession();
     var restored = false;
@@ -2052,7 +2220,6 @@ body {
   function openFile() { fileInput.click(); }
 
   // ===== 事件绑定 =====
-  btnUpload.addEventListener('click', openFile);
   fileInput.addEventListener('change', function (e) {
     if (e.target.files && e.target.files[0]) loadImageFromFile(e.target.files[0]);
     e.target.value = '';
@@ -2082,6 +2249,7 @@ body {
   function setMarkMode(m, tip) {
     markMode = m;
     panMode = false;   // 切换标注模式时自动关闭抓手
+    saveState();       // 记住当前工具，下次打开沿用（悬浮栏"记住上次选择的形状"）
     refreshUI();   // 仅更新按钮高亮，无需重绘整幅大图（避免切换模式卡顿）
     toast(tip);
   }
@@ -2091,27 +2259,36 @@ body {
   btnFrameMode.addEventListener('click', function () { setMarkMode('frame', '框图模式：按住拖动绘制矩形框，用于框住标记'); });
   btnTextMode.addEventListener('click', function () { setMarkMode('text', '文字模式：点击添加文字描述'); });
 
-  // 下拉菜单开关
+  // 下拉菜单开关（导出 / 显示设置）
   function closeDropdowns() {
-    modeDropdown.classList.remove('open');
     exportDropdown.classList.remove('open');
+    viewDropdown.classList.remove('open');
   }
-  btnModeMenu.addEventListener('click', function (e) {
-    e.stopPropagation();
-    var was = modeDropdown.classList.contains('open');
-    closeDropdowns();
-    if (!was) modeDropdown.classList.add('open');
-  });
   btnExportMenu.addEventListener('click', function (e) {
     e.stopPropagation();
     var was = exportDropdown.classList.contains('open');
     closeDropdowns();
     if (!was) exportDropdown.classList.add('open');
   });
-  modeMenu.addEventListener('click', closeDropdowns);
   exportMenu.addEventListener('click', closeDropdowns);
+  btnViewMenu.addEventListener('click', function (e) {
+    e.stopPropagation();
+    var was = viewDropdown.classList.contains('open');
+    closeDropdowns();
+    if (!was) viewDropdown.classList.add('open');
+  });
+  viewMenu.addEventListener('click', function (e) {
+    e.stopPropagation();   // 在菜单内操作滑块/开关时不关闭
+  });
   document.addEventListener('click', function (e) {
-    if (!modeDropdown.contains(e.target) && !exportDropdown.contains(e.target)) closeDropdowns();
+    if (!exportDropdown.contains(e.target) && !viewDropdown.contains(e.target)) closeDropdowns();
+  });
+
+  // 悬浮玻璃工具栏：角落缺口折叠/展开（折叠后只显示当前工具，即"记住上次选择的形状"）
+  floatNotch.addEventListener('click', function (e) {
+    e.stopPropagation();
+    floatToolbar.classList.toggle('collapsed');
+    toast(floatToolbar.classList.contains('collapsed') ? '已折叠工具栏：点击角落缺口展开' : '已展开工具栏');
   });
   csvInput.addEventListener('change', function (e) {
     if (e.target.files && e.target.files[0]) importCSVFile(e.target.files[0]);
@@ -2534,6 +2711,42 @@ body {
     spaceDown = false;
     mainEl.classList.remove('panning');
     if (drag) { clearOverlay(); commitPan(); drag = null; }
+  });
+
+  // ===== 防误操作：退出/刷新确认 =====
+  var allowUnload = false;
+  function openExitModal() {
+    if (exitCount) exitCount.textContent = String(points.length);
+    exitModal.style.display = 'flex';
+    setTimeout(function () { if (exitOk) exitOk.focus(); }, 0);
+  }
+  function closeExitModal() { exitModal.style.display = 'none'; }
+  exitCancel.addEventListener('click', closeExitModal);
+  exitOk.addEventListener('click', function () {
+    allowUnload = true;
+    location.reload();
+  });
+  exitModal.addEventListener('click', function (e) {
+    if (e.target === exitModal) closeExitModal();
+  });
+  // 拦截 F5 / Ctrl+R / Cmd+R，用自定义弹窗替代浏览器原生确认框
+  window.addEventListener('keydown', function (e) {
+    var isRefresh = (e.key === 'F5') ||
+      ((e.ctrlKey || e.metaKey) && (e.key === 'r' || e.key === 'R'));
+    if (isRefresh && points.length > 0) {
+      e.preventDefault();
+      openExitModal();
+    } else if (e.key === 'Escape' && exitModal.style.display === 'flex') {
+      e.preventDefault();
+      closeExitModal();
+    }
+  });
+  // 浏览器刷新按钮 / 关闭标签页 / Cmd+W 无法拦截，仍用原生确认框兜底
+  window.addEventListener('beforeunload', function (e) {
+    if (points.length > 0 && !allowUnload) {
+      e.preventDefault();
+      e.returnValue = '';   // Chrome 需要设置 returnValue 才会弹出原生确认框
+    }
   });
 
   window.addEventListener('resize', resizeCanvas);
