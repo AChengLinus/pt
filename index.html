@@ -6,7 +6,10 @@
 <title>图片标记工具 — 光伏组件 EL 点位标注</title>
 <link rel="icon" type="image/png" href="images/favicon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+SC:wght@400;500;600;700&display=swap" rel="stylesheet">
+<!-- 字体样式表必须非阻塞：外链样式表未返回时浏览器会暂停解析后续脚本，
+     断网环境下会导致整个应用卡在 loading、所有按钮失效。media="print" + onload 改为异步加载，
+     联网时照常应用 Web 字体，断网时直接回退到系统字体。 -->
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+SC:wght@400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -168,13 +171,13 @@ body {
 .panel.collapsed .panel-head .chev { transform: rotate(-90deg); }
 .panel.collapsed .panel-head { border-bottom: none; }
 .panel.collapsed { width: auto; }
-.panel-body { padding: 10px 12px; overflow-y: auto; }
+.panel-body { padding: 10px 12px; overflow-y: auto; min-height: 0; }
 .panel.collapsed .panel-body { display: none; }
 
 /* 颜色行 */
 .color-row {
   display: flex; align-items: center; gap: 8px; padding: 5px 6px;
-  border-radius: 8px; transition: background .12s;
+  border-radius: 8px; transition: background .12s; cursor: pointer;
 }
 .color-row:hover { background: rgba(30,58,95,0.05); }
 .color-row.selected { background: rgba(59,130,246,0.14); outline: 1px solid var(--accent); }
@@ -206,6 +209,81 @@ body {
   width: 32px; height: 24px; border: none; background: none; cursor: pointer; padding: 0;
 }
 .custom-color label { font-size: 11px; color: var(--text3); }
+.add-marker-btn {
+  flex: 1; padding: 7px 10px; border: 1px dashed var(--accent); background: none;
+  color: var(--accent2); border-radius: 8px; cursor: pointer; font-size: 12px; font-weight: 600;
+  font-family: inherit;
+}
+.add-marker-btn:hover { background: rgba(47,128,237,0.1); }
+
+/* 颜色盘：点「＋添加标记」后在标记表面板下方弹出的浮层（独立定位，不遮挡标记表） */
+.color-palette {
+  position: fixed;
+  display: none;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 7px;
+  padding: 9px 8px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--panel);
+  box-shadow: 0 10px 32px rgba(30,58,95,0.22);
+  z-index: 60;
+  width: 200px;
+  box-sizing: border-box;
+}
+.color-palette.open { display: flex; }
+.palette-swatch {
+  width: 22px; height: 22px; border-radius: 6px;
+  border: 2px solid rgba(0,0,0,0.25); padding: 0; flex-shrink: 0;
+  cursor: pointer; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.22);
+}
+.palette-swatch:hover { transform: scale(1.15); border-color: var(--accent); }
+.palette-custom {
+  width: 22px; height: 22px; border-radius: 6px; border: 1px dashed var(--text3);
+  padding: 0; flex-shrink: 0; cursor: pointer; background: none; color: var(--text2);
+  font-size: 13px; line-height: 1; display: flex; align-items: center; justify-content: center;
+}
+.palette-custom:hover { border-color: var(--accent); color: var(--accent2); }
+
+/* 自定义 RGB 颜色选择面板：点颜色盘「自定义」后弹出，同样定位在标记表下方，不遮挡标记表 */
+.color-picker {
+  position: fixed;
+  display: none;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--panel);
+  box-shadow: 0 10px 32px rgba(30,58,95,0.22);
+  z-index: 60;
+  width: 200px;
+  box-sizing: border-box;
+}
+.color-picker.open { display: flex; }
+.cp-preview {
+  height: 40px; border-radius: 8px; border: 1px solid rgba(0,0,0,0.25);
+  background: #ff4d4f;
+}
+.cp-row { display: flex; align-items: center; gap: 6px; }
+.cp-row > span { width: 12px; font-size: 11px; color: var(--text2); flex-shrink: 0; }
+.cp-row input[type=range] { flex: 1; min-width: 0; }
+.cp-row input[type=number] {
+  width: 42px; flex-shrink: 0;
+  background: var(--bg2); border: 1px solid var(--border2); color: var(--text);
+  border-radius: 6px; padding: 3px 4px; font-size: 12px; font-family: inherit;
+}
+.cp-row.cp-hex { margin-top: 2px; }
+.cp-row.cp-hex > span { width: auto; }
+.cp-hex input {
+  flex: 1; min-width: 0;
+  background: var(--bg2); border: 1px solid var(--border2); color: var(--text);
+  border-radius: 6px; padding: 5px 6px; font-size: 13px; font-family: inherit;
+  text-transform: lowercase;
+}
+.cp-actions { display: flex; gap: 8px; }
+.cp-actions .tbtn { flex: 1; justify-content: center; }
 
 /* 统计面板 */
 .stat-total {
@@ -238,9 +316,10 @@ body {
 .drop-hint {
   position: absolute; inset: 0; display: flex; flex-direction: column;
   align-items: center; justify-content: center; gap: 14px;
-  color: var(--text2); z-index: 6; cursor: pointer; text-align: center; padding: 20px;
+  color: var(--text2); z-index: 6; cursor: default; text-align: center; padding: 20px;
 }
 .drop-hint.hidden { display: none; }
+.drop-hint.dragging .file-upload-design { border-color: var(--accent); background: rgba(255, 255, 255, 0.96); transform: translateY(-6px); }
 .file-upload-design {
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   gap: 12px; width: 340px; min-height: 240px; max-width: 92%;
@@ -441,6 +520,7 @@ body {
     <button class="tbtn" id="btnUndo" title="撤销上一步 (Ctrl+Z)"><svg class="ico-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/></svg>撤销</button>
     <button class="tbtn" id="btnReset" title="图片适应窗口大小"><svg class="ico-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 2.6-6.4L3 8"/><path d="M3 3v5h5"/></svg>重置视图</button>
     <button class="tbtn danger" id="btnClear" title="清空全部标注点"><svg class="ico-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>清空</button>
+    <button class="tbtn" id="btnCloseImg" title="关闭当前图片"><svg class="ico-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>关闭图片</button>
   </div>
 
   <div class="tgroup">
@@ -456,6 +536,7 @@ body {
       </button>
       <div class="dropdown-menu menu-wide" id="viewMenu">
         <button class="dd-item" id="btnLabels" title="开关标注数字显示" aria-pressed="true"><svg class="ico-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 5 6 19M17 5l-2 14M4 9h15M3 15h15"/></svg>显示数字</button>
+        <button class="dd-item" id="btnHighRes" title="高配模式：加载图片后立即渲染当前视图的高清图（适合性能较好的电脑）" aria-pressed="false"><svg class="ico-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/></svg>高清渲染</button>
         <div class="dd-slider"><span>点大小</span><input type="range" id="pointSizeRange" min="6" max="30" step="1" value="16"><span class="val" id="pointSizeVal">16px</span></div>
         <div class="dd-slider"><span>透明度</span><input type="range" id="opacityRange" min="10" max="100" step="1" value="100"><span class="val" id="opacityVal">100%</span></div>
       </div>
@@ -487,9 +568,9 @@ body {
   <div class="drop-hint" id="dropHint">
     <div class="file-upload-design">
       <svg class="upload-cloud" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96z"/></svg>
-      <div class="t1">拖拽图片 / PDF 到此处</div>
-      <span class="browse-button">浏览本地图片</span>
-      <div class="t2">支持 JPG / PNG / WEBP / TIF / PDF · 滚轮缩放 · 点/框/笔/框图/文字标注 · Ctrl+Z 撤销 · 可导出/导入 CSV 与标注图片</div>
+      <div class="t1">拖拽图片 / PDF / CAD 图纸到此处</div>
+      <span class="browse-button">浏览本地文件</span>
+      <div class="t2">支持 JPG / PNG / WEBP / TIF / PDF / DXF / DWG · 滚轮缩放 · 点/框/笔/框图/文字标注 · Ctrl+Z 撤销 · 可导出/导入 CSV 与标注图片</div>
     </div>
   </div>
 
@@ -499,6 +580,7 @@ body {
     <button class="fbtn" id="btnPenMode" data-mode="pen" title="标注笔"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg></button>
     <button class="fbtn" id="btnFrameMode" data-mode="frame" title="框图"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8V4h4M16 4h4v4M20 16v4h-4M8 20H4v-4"/></svg></button>
     <button class="fbtn" id="btnTextMode" data-mode="text" title="文字"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7V5h16v2"/><path d="M12 5v14"/><path d="M8 19h8"/></svg></button>
+    <button class="fbtn" id="btnCadDark" title="CAD 背景：黑底 / 白底" style="display:none"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 0 0 18z" fill="currentColor" stroke="none"/></svg></button>
     <button class="fbtn notch" id="floatNotch" title="折叠/展开工具栏" aria-label="折叠或展开工具栏"></button>
   </div>
 
@@ -506,7 +588,9 @@ body {
     <div class="panel-head" id="colorPanelHead"><span class="ph-title"><svg class="pico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-5.5-7-11a7 7 0 0 1 14 0c0 5.5-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>标记表</span><span class="chev">▾</span></div>
     <div class="panel-body">
       <div id="colorList"></div>
-      <div class="custom-color"><input type="color" id="customColorInput" value="#ff4d4f"><label>＋ 添加标记</label></div>
+      <div class="custom-color">
+        <button class="add-marker-btn" id="btnAddColor">＋ 添加标记</button>
+      </div>
     </div>
   </aside>
 
@@ -526,6 +610,20 @@ body {
   <div class="zoom-badge" id="zoomBadge"></div>
 </main>
 
+<div class="color-palette" id="colorPalette"></div>
+
+<div class="color-picker" id="colorPicker">
+  <div class="cp-preview" id="cpPreview"></div>
+  <div class="cp-row"><span>R</span><input type="range" id="cpR" min="0" max="255" step="1"><input type="number" id="cpRN" min="0" max="255" step="1"></div>
+  <div class="cp-row"><span>G</span><input type="range" id="cpG" min="0" max="255" step="1"><input type="number" id="cpGN" min="0" max="255" step="1"></div>
+  <div class="cp-row"><span>B</span><input type="range" id="cpB" min="0" max="255" step="1"><input type="number" id="cpBN" min="0" max="255" step="1"></div>
+  <div class="cp-row cp-hex"><span>#</span><input type="text" id="cpHex" maxlength="6" spellcheck="false"></div>
+  <div class="cp-actions">
+    <button class="tbtn" id="cpCancel">取消</button>
+    <button class="tbtn primary" id="cpOk">确定</button>
+  </div>
+</div>
+
 <div class="loading-overlay" id="loadingOverlay" style="display:none">
   <div class="spinner"></div>
   <div class="loading-text">正在加载图片…</div>
@@ -533,7 +631,7 @@ body {
 
 <div class="toast" id="toast"></div>
 <div class="hover-tip" id="hoverTip"></div>
-<input type="file" id="fileInput" accept="image/*,.tif,.tiff,.pdf,application/pdf" hidden>
+<input type="file" id="fileInput" accept="image/*,.tif,.tiff,.pdf,application/pdf,.dxf,.dwg" hidden>
 <input type="file" id="csvInput" accept=".csv,text/csv" hidden>
 
 <div class="modal-overlay" id="countModal" style="display:none">
@@ -574,15 +672,27 @@ body {
   </div>
 </div>
 
+<div class="modal-overlay" id="confirmModal" style="display:none">
+  <div class="modal-box exit-box">
+    <div class="exit-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg></div>
+    <div class="modal-title exit-title" id="confirmTitle">确定吗？</div>
+    <div class="exit-text" id="confirmText"></div>
+    <div class="modal-actions">
+      <button class="tbtn" id="confirmCancel">取消</button>
+      <button class="tbtn danger-solid" id="confirmOk">确定</button>
+    </div>
+  </div>
+</div>
+
 <div class="ctx-menu" id="ctxMenu" style="display:none">
   <div class="ctx-colors" id="ctxColors"></div>
-  <div class="ctx-sep"></div>
+  <div class="ctx-sep" id="ctxSep1"></div>
   <div class="ctx-size-row" id="ctxSizeRow">
     <button class="ctx-item" id="ctxSizeSmall">小</button>
     <button class="ctx-item" id="ctxSizeMed">中</button>
     <button class="ctx-item" id="ctxSizeLarge">大</button>
   </div>
-  <div class="ctx-sep"></div>
+  <div class="ctx-sep" id="ctxSep2"></div>
   <div class="ctx-opacity-row" id="ctxOpacityRow">
     <label for="ctxOpacityRange">透明度</label>
     <input type="range" id="ctxOpacityRange" min="10" max="100" step="1" value="100">
@@ -591,7 +701,7 @@ body {
     <label for="ctxToolColor">颜色</label>
     <input type="color" id="ctxToolColor" value="#3b82f6">
   </div>
-  <div class="ctx-sep"></div>
+  <div class="ctx-sep" id="ctxSep3"></div>
   <button class="ctx-item" id="ctxEditText"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>修改文字</button>
   <button class="ctx-item" id="ctxChangeCount"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 5 6 19M17 5l-2 14M4 9h15M3 15h15"/></svg>修改数量</button>
   <button class="ctx-item" id="ctxDelete"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>删除</button>
@@ -615,19 +725,24 @@ body {
 
 <script src="lib/pdf.min.js"></script>
 <script src="lib/pdf.worker.min.js"></script>
+<script src="lib/dxf-parser.min.js"></script>
 <script>
 (function () {
   'use strict';
 
   // ===== 常量 =====
   var KEY = 'el-marker-state';
-  var MIN_SCALE = 0.05, MAX_SCALE = 40;
+  var MAX_SCALE = 40;
 
   var PALETTE = [
     { name: '点数1', hex: '#ff4d4f' }
   ];
   var toolColor = '#3b82f6';   // 画笔/框图/文字等提示工具的颜色（独立于标记表，不生成标记图层）
   var PALETTE_VERSION = 3;   // 标记表改版后递增：默认名称改为「点数N」自动排序
+  var PRESET_COLORS = [       // 颜色盘预设色（点「＋添加标记」后显示在标记表底部）
+    '#ff4d4f', '#ff7a45', '#faad14', '#fadb14', '#a0d911', '#52c41a',
+    '#13c2c2', '#1890ff', '#2f54eb', '#722ed1', '#eb2f96', '#8c8c8c'
+  ];
 
   // ===== DOM =====
   var canvas = document.getElementById('canvas');
@@ -642,7 +757,8 @@ body {
   var statTotal = document.getElementById('statTotal');
   var statColorList = document.getElementById('statColorList');
   var colorList = document.getElementById('colorList');
-  var customColorInput = document.getElementById('customColorInput');
+  var btnAddColor = document.getElementById('btnAddColor');
+  var colorPalette = document.getElementById('colorPalette');
   var pointSizeRange = document.getElementById('pointSizeRange');
   var pointSizeVal = document.getElementById('pointSizeVal');
   var opacityRange = document.getElementById('opacityRange');
@@ -650,7 +766,10 @@ body {
   var btnUndo = document.getElementById('btnUndo');
   var btnReset = document.getElementById('btnReset');
   var btnClear = document.getElementById('btnClear');
+  var btnCloseImg = document.getElementById('btnCloseImg');
   var btnLabels = document.getElementById('btnLabels');
+  var btnHighRes = document.getElementById('btnHighRes');
+  var btnCadDark = document.getElementById('btnCadDark');   // CAD 图纸背景：黑底 / 白底
   var btnExport = document.getElementById('btnExport');
   var btnExport2 = document.getElementById('btnExport2');
   var btnImport = document.getElementById('btnImport');
@@ -705,6 +824,24 @@ body {
   var exitCancel = document.getElementById('exitCancel');
   var exitOk = document.getElementById('exitOk');
   var exitCount = document.getElementById('exitCount');
+  var confirmModal = document.getElementById('confirmModal');
+  var confirmTitle = document.getElementById('confirmTitle');
+  // 注意：变量名不能叫 confirmText —— 那会覆盖下面文字标注用的 function confirmText()，
+  // 导致「文字描述」弹窗的确定按钮绑定失败（addEventListener 收到 DOM 元素，静默失效）
+  var confirmTextEl = document.getElementById('confirmText');
+  var confirmCancel = document.getElementById('confirmCancel');
+  var confirmOk = document.getElementById('confirmOk');
+  var colorPicker = document.getElementById('colorPicker');
+  var cpPreview = document.getElementById('cpPreview');
+  var cpR = document.getElementById('cpR');
+  var cpG = document.getElementById('cpG');
+  var cpB = document.getElementById('cpB');
+  var cpRN = document.getElementById('cpRN');
+  var cpGN = document.getElementById('cpGN');
+  var cpBN = document.getElementById('cpBN');
+  var cpHex = document.getElementById('cpHex');
+  var cpCancel = document.getElementById('cpCancel');
+  var cpOk = document.getElementById('cpOk');
 
   // ===== 状态 =====
   var img = null;
@@ -720,6 +857,7 @@ body {
   var TEXT_BASE = 14;        // 文字标注字号基准（独立于点大小滑块）
   var opacity = 1.0;
   var showLabels = true;
+  var highResMode = false;   // 高配模式：用更高分辨率（8192px）的整图基础层，加载即清晰、放大不虚
   var markMode = 'point'; // 'point' | 'box' | 'pen' | 'frame' | 'text'
   var colorMeta = {};     // hex -> { name, visible }
   var customOrder = [];   // 自定义颜色顺序
@@ -743,6 +881,18 @@ body {
   var hoverIdx = -1;              // 悬停命中的标注索引
   var lastAddedIdx = -1;          // 最近一次单击添加的点（用于双击去重）
 
+  // ===== 超大图瓦片渲染（Electron 桌面版，走主进程 sharp/libvips 引擎，GPU 显示） =====
+  var remoteImg = null;           // { path, name, w, h, min, max, depth }
+  var tileBitmap = null;          // 当前瓦片位图（ImageBitmap / Image）
+  var tileView = null;            // 瓦片对应视图快照 {scale,tx,ty,vx0,vy0,vx1,vy1}
+  var tilePending = 0;            // 瓦片请求序号（丢弃过期响应）
+  var overviewBitmap = null;      // 整图概览（低分辨率基础层，缩放/平移时 GPU 缩放兜底）
+  var overviewLoaded = false;     // 概览是否已加载完成（成功或失败），完成前不请求高清瓦片
+  var sharpAvailable = null;      // 主进程 sharp 是否可用（null=未知）
+  var bgPaused = false;           // 主进程打开文件对话框期间置真，暂停取瓦片/金字塔，避免与对话框抢 CPU
+
+  function hasImage() { return !!(img || remoteImg || vectorDoc); }
+
   function initColorMeta() {
     colorMeta = {};
     customOrder = [];
@@ -765,6 +915,17 @@ body {
     clearTimeout(toastTimer);
     toastTimer = setTimeout(function () { toastEl.classList.remove('show'); }, 2200);
   }
+  // 通用确认弹窗（软件 UI 风格，替代浏览器原生 confirm；onOk 为确认后回调）
+  var confirmCb = null;
+  function showConfirm(title, text, onOk, okLabel) {
+    confirmTitle.textContent = title;
+    confirmTextEl.textContent = text;
+    confirmOk.textContent = okLabel || '确定';
+    confirmCb = onOk;
+    confirmModal.style.display = 'flex';
+    setTimeout(function () { confirmOk.focus(); }, 0);
+  }
+  function closeConfirm() { confirmModal.style.display = 'none'; confirmCb = null; }
   function hitRadius() { return Math.max(10, pointSize / 2 + 6); }
   function annotationCount(p) {
     if (p.type === 'box') return p.count || 1;
@@ -835,6 +996,20 @@ body {
     showLabels = !showLabels;
     saveState(); refreshUI(); render();
   }
+  // 高配模式：切换后用新的分辨率（高配 8192px / 普通 2048px）重新生成整图基础层，
+  // 让「加载即清晰、放大不虚」，避免拖动后重新刷新画面。
+  function toggleHighRes() {
+    if (vectorDoc) { toast('CAD 图纸是矢量渲染，放大始终清晰，无需高配模式'); return; }
+    highResMode = !highResMode;
+    saveState(); refreshUI();
+    if (remoteImg) {
+      if (overviewBitmap && overviewBitmap.close) { try { overviewBitmap.close(); } catch (e) {} }
+      overviewBitmap = null;
+      overviewLoaded = false;
+      loadOverview();   // 用新分辨率重新加载基础层，完成后自动重绘
+    }
+    toast(highResMode ? '高配模式已开启：整图高清渲染（加载稍慢、内存更高）' : '高配模式已关闭');
+  }
 
   // ===== 持久化 =====
   function saveState() {
@@ -842,10 +1017,11 @@ body {
       var data = {
         settings: {
           pointSize: pointSize, opacity: opacity, showLabels: showLabels,
+          highResMode: highResMode,
           currentColor: currentColor, colorMeta: colorMeta, customOrder: customOrder,
           toolColor: toolColor, markMode: markMode, paletteV: PALETTE_VERSION
         },
-        session: img ? {
+        session: (img || remoteImg || vectorDoc) ? {
           name: currentImgName, w: imgW, h: imgH, points: points
         } : null
       };
@@ -861,6 +1037,7 @@ body {
       if (typeof s.pointSize === 'number') pointSize = s.pointSize;
       if (typeof s.opacity === 'number') opacity = s.opacity;
       if (typeof s.showLabels === 'boolean') showLabels = s.showLabels;
+      if (typeof s.highResMode === 'boolean') highResMode = s.highResMode;
       if (s.markMode && ['point', 'box', 'pen', 'frame', 'text'].indexOf(s.markMode) >= 0) markMode = s.markMode;
       if (s.currentColor) currentColor = s.currentColor;
       if (s.toolColor) toolColor = s.toolColor;
@@ -879,13 +1056,21 @@ body {
   }
 
   // ===== 视图变换 =====
+  // 最小缩放随图片尺寸动态变化：保证总能缩小到看全整张图（超长/超大图比固定的 5% 小很多）
+  function minScale() {
+    if (!hasImage()) return 0.05;
+    var W = mainEl.clientWidth, H = mainEl.clientHeight;
+    if (!W || !H) return 0.05;
+    var fitScale = Math.min((W - 48) / imgW, (H - 48) / imgH);
+    return Math.max(0.001, Math.min(0.05, fitScale * 0.5));
+  }
   function fit() {
-    if (!img) return;
+    if (!hasImage()) return;
     var W = mainEl.clientWidth, H = mainEl.clientHeight;
     var iw = imgW, ih = imgH;
     var margin = 48;
     var scale = Math.min((W - margin * 2) / iw, (H - margin * 2) / ih);
-    view.scale = clamp(scale, MIN_SCALE, MAX_SCALE);
+    view.scale = clamp(scale, minScale(), MAX_SCALE);
     view.tx = (W - iw * view.scale) / 2;
     view.ty = (H - ih * view.scale) / 2;
     render();
@@ -893,7 +1078,7 @@ body {
   function zoomAt(sx, sy, factor) {
     var ix = (sx - view.tx) / view.scale;
     var iy = (sy - view.ty) / view.scale;
-    var ns = clamp(view.scale * factor, MIN_SCALE, MAX_SCALE);
+    var ns = clamp(view.scale * factor, minScale(), MAX_SCALE);
     if (ns === view.scale) return;
     view.scale = ns;
     view.tx = sx - ix * ns;
@@ -1085,8 +1270,15 @@ body {
         ctx.drawImage(imageLayer, 0, 0, W, H);
       }
       drawPoints(W, H, low);
+    } else if (remoteImg || vectorDoc) {
+      // 超大图 / CAD 图纸：瓦片渲染（GPU 贴图）。
+      // 交互期间用概览或旧瓦片占位，静止后请求清晰瓦片（矢量后端就是本地重绘矢量）。
+      drawRemoteTile();
+      strokeImageBorder(ctx);
+      if (!low) requestTileIfNeeded();
+      drawPoints(W, H, low);
     }
-    zoomBadge.textContent = img ? ('缩放 ' + Math.round(view.scale * 100) + '%') : '';
+    zoomBadge.textContent = (img || remoteImg || vectorDoc) ? ('缩放 ' + Math.round(view.scale * 100) + '%') : '';
     if (hoverIdx >= 0) drawHoverHighlight();
   }
 
@@ -1165,32 +1357,35 @@ body {
       var sy = view.ty + p.y * view.scale;
       if (sx < -r - 20 || sx > W + r + 20 || sy < -r - 20 || sy > H + r + 20) continue;
 
-      // 点填充
+      // 紧凑小点：只画一个小圆点，不遮图像目标
+      var dotR = 4;
       ctx.globalAlpha = opacity;
       ctx.beginPath();
-      ctx.arc(sx, sy, r, 0, Math.PI * 2);
+      ctx.arc(sx, sy, dotR, 0, Math.PI * 2);
       ctx.fillStyle = p.color;
       ctx.fill();
       ctx.globalAlpha = 1;
 
-      // 对比描边
-      ctx.lineWidth = Math.max(1, r * 0.28);
+      // 细描边保证在明暗背景上都可见
+      ctx.lineWidth = 1;
       ctx.strokeStyle = 'rgba(0,0,0,0.55)';
       ctx.stroke();
 
-      // 数字标签
+      // 编号显示在小点右上角
       if (drawLabels) {
         var txt = String(p.label);
-        ctx.font = '600 ' + Math.max(9, Math.round(pointSize * 0.68)) + 'px Inter, "Noto Sans SC", sans-serif';
-        ctx.textAlign = 'center';
+        ctx.font = '600 ' + Math.max(9, Math.round(pointSize * 0.5)) + 'px Inter, "Noto Sans SC", sans-serif';
+        ctx.textAlign = 'left';
         ctx.textBaseline = 'middle';
+        var lx = sx + dotR + 3;
+        var ly = sy - dotR - 3;
         if (halo) {
           ctx.lineWidth = Math.max(2, Math.round(pointSize * 0.16));
           ctx.strokeStyle = 'rgba(0,0,0,0.85)';
-          ctx.strokeText(txt, sx, sy);
+          ctx.strokeText(txt, lx, ly);
         }
         ctx.fillStyle = '#ffffff';
-        ctx.fillText(txt, sx, sy);
+        ctx.fillText(txt, lx, ly);
       }
     }
   }
@@ -1568,10 +1763,42 @@ body {
   }
   function clearAll() {
     if (!points.length) { toast('暂无标注'); return; }
-    if (!confirm('确定清空全部 ' + points.length + ' 个标注？')) return;
-    pushUndo();
-    points = [];
-    afterDataChange();
+    showConfirm('清空标注', '确定清空全部 ' + points.length + ' 个标注？此操作可撤销（Ctrl+Z）。', function () {
+      pushUndo();
+      points = [];
+      afterDataChange();
+    }, '清空');
+  }
+  // 关闭当前图片，回到未加载状态
+  function closeImage() {
+    if (!hasImage()) { toast('当前未加载图片'); return; }
+    var doClose = function () {
+      // 释放位图 / 对象 URL，避免内存泄漏
+      if (imgUrl) { try { URL.revokeObjectURL(imgUrl); } catch (e) {} imgUrl = null; }
+      if (overviewBitmap && overviewBitmap.close) { try { overviewBitmap.close(); } catch (e) {} }
+      if (tileBitmap && tileBitmap.close) { try { tileBitmap.close(); } catch (e) {} }
+      img = null; remoteImg = null; vectorDoc = null;
+      tileBitmap = null; tileView = null; vectorTileCanvas = null;
+      overviewBitmap = null; overviewLoaded = false; previewCanvas = null;
+      imageLayer = null; imageLayerView = null;
+      imgW = 0; imgH = 0; currentImgName = '';
+      points = []; undoStack = [];
+      pendingBox = null; pendingEditIdx = -1; pendingText = null; pendingTextIdx = -1;
+      ctxHit = -1; hoverIdx = -1; lastAddedIdx = -1;
+      view = { scale: 1, tx: 0, ty: 0 };
+      dropHint.classList.remove('hidden');
+      floatToolbar.classList.add('hidden');
+      clearOverlay();
+      refreshUI();
+      saveState();
+      render();
+      toast('已关闭图片');
+    };
+    if (points.length) {
+      showConfirm('关闭图片', '关闭图片将清除当前 ' + points.length + ' 个标注。是否继续？', doClose, '关闭');
+    } else {
+      doClose();
+    }
   }
 
   // ===== UI 刷新 =====
@@ -1619,8 +1846,17 @@ body {
     // 按钮状态
     btnUndo.disabled = undoStack.length === 0;
     btnClear.disabled = points.length === 0;
+    btnCloseImg.disabled = !(img || remoteImg || vectorDoc);
     btnLabels.classList.toggle('active', showLabels);
     btnLabels.setAttribute('aria-pressed', String(showLabels));
+    btnHighRes.classList.toggle('active', highResMode);
+    btnHighRes.setAttribute('aria-pressed', String(highResMode));
+    // 高配模式只对位图有意义（矢量本来就无穷清晰），矢量模式下直接隐藏该按钮
+    btnHighRes.style.display = vectorDoc ? 'none' : '';
+    if (btnCadDark) {
+      btnCadDark.style.display = vectorDoc ? '' : 'none';
+      btnCadDark.classList.toggle('active', !!(vectorDoc && vectorDoc.bgDark));
+    }
     btnGrab.classList.toggle('active', panMode);
     mainEl.classList.toggle('grab', panMode);
 
@@ -1632,7 +1868,7 @@ body {
     btnTextMode.classList.toggle('active', markMode === 'text');
 
     // 文件标签
-    fileLabel.textContent = img ? currentImgName : '未加载图片';
+    fileLabel.textContent = (img || remoteImg || vectorDoc) ? currentImgName : '未加载图片';
 
     // 滑块
     pointSizeRange.value = pointSize;
@@ -1640,7 +1876,6 @@ body {
     opacityRange.value = Math.round(opacity * 100);
     opacityVal.textContent = Math.round(opacity * 100) + '%';
 
-    customColorInput.value = currentColor;
     toolColorInput.value = toolColor;
     toolColorInput.style.display = (markMode === 'pen' || markMode === 'text') ? '' : 'none';
   }
@@ -1653,10 +1888,11 @@ body {
       var c = counts[hex] || 0;
       var row = document.createElement('div');
       row.className = 'color-row' + (hex === currentColor ? ' selected' : '');
+      row.setAttribute('data-hex', hex);
       row.innerHTML =
         '<span class="cidx">' + (i + 1) + '</span>' +
         '<input type="color" class="recolor" data-hex="' + hex + '" value="' + hex + '" title="修改颜色">' +
-        '<span class="cname" data-hex="' + hex + '" title="点击选中该标记">' + escapeHtml(meta.name) + '</span>' +
+        '<span class="cname" data-hex="' + hex + '" title="单击选中，双击重命名">' + escapeHtml(meta.name) + '</span>' +
         '<span class="ccount">' + c + '</span>' +
         '<button class="icon-btn rename-btn" data-hex="' + hex + '" title="重命名"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg></button>' +
         '<button class="icon-btn del-btn" data-hex="' + hex + '" title="删除标记"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg></button>';
@@ -1702,15 +1938,20 @@ body {
     if (Object.keys(colorMeta).length <= 1) { toast('至少保留一个标记'); return; }
     var cnt = 0;
     for (var i = 0; i < points.length; i++) if (points[i].color === hex) cnt++;
-    if (cnt > 0 && !confirm('删除标记「' + meta.name + '」将同时删除其 ' + cnt + ' 个标注，确定？')) return;
-    pushUndo();
-    var kept = [];
-    for (var j = 0; j < points.length; j++) if (points[j].color !== hex) kept.push(points[j]);
-    points = kept;
-    delete colorMeta[hex];
-    for (var k = 0; k < customOrder.length; k++) if (customOrder[k] === hex) { customOrder.splice(k, 1); k--; }
-    if (currentColor === hex) currentColor = colorOrder()[0];
-    afterDataChange();
+    // 删除标记属不可逆操作，始终二次确认防误触（无标注点也确认），用软件 UI 弹窗
+    var msg = cnt > 0
+      ? '删除标记「' + meta.name + '」将同时删除其 ' + cnt + ' 个标注。'
+      : '确定删除标记「' + meta.name + '」？';
+    showConfirm('删除标记', msg, function () {
+      pushUndo();
+      var kept = [];
+      for (var j = 0; j < points.length; j++) if (points[j].color !== hex) kept.push(points[j]);
+      points = kept;
+      delete colorMeta[hex];
+      for (var k = 0; k < customOrder.length; k++) if (customOrder[k] === hex) { customOrder.splice(k, 1); k--; }
+      if (currentColor === hex) currentColor = colorOrder()[0];
+      afterDataChange();
+    }, '删除');
   }
   // 修改某个颜色的颜色值：所有该颜色的标注一并改色
   function recolor(oldHex, newHex) {
@@ -1762,7 +2003,8 @@ body {
     var url = URL.createObjectURL(blob);
     var a = document.createElement('a');
     a.href = url;
-    a.download = '标注数据_' + timestamp() + '.csv';
+    var base = (currentImgName || 'image').replace(/\.[^.]+$/, '');
+    a.download = '标注数据_' + base + '_' + timestamp() + '.csv';
     document.body.appendChild(a);
     a.click();
     a.remove();
@@ -1824,21 +2066,31 @@ body {
         g.fillText(p.text || '', tp[0], tp[1]);
       } else {
         var cp = txFn(p.x, p.y);
+        // 紧凑小点：不按图像尺寸等比放大，避免遮盖目标（导出图分辨率高，半径再缩小）
+        var dotR = Math.max(3, Math.round(R * 0.05));
         g.beginPath();
-        g.arc(cp[0], cp[1], R, 0, Math.PI * 2);
+        g.arc(cp[0], cp[1], dotR, 0, Math.PI * 2);
         g.fillStyle = p.color;
         g.fill();
-        g.lineWidth = Math.max(1, Math.round(R * 0.28));
+        g.lineWidth = 1;
         g.strokeStyle = 'rgba(0,0,0,0.55)';
         g.stroke();
       }
       if (showLabels && p.type !== 'pen' && p.type !== 'text' && p.type !== 'frame') {
         var lp = txFn(p.x, p.y);
         var lx = lp[0], ly = lp[1];
-        g.font = '600 ' + fs + 'px Inter, "Noto Sans SC", sans-serif';
-        if (p.type === 'box') { g.textAlign = 'left'; g.textBaseline = 'top'; lx = lp[0] + fs * 0.4; ly = lp[1] + fs * 0.4; }
-        else { g.textAlign = 'center'; g.textBaseline = 'middle'; }
-        g.lineWidth = Math.max(2, Math.round(fs * 0.22));
+        var lfs = fs;
+        if (p.type === 'box') {
+          g.textAlign = 'left'; g.textBaseline = 'top';
+          lx = lp[0] + fs * 0.4; ly = lp[1] + fs * 0.4;
+        } else {
+          // 点标注：编号显示在小点右上角，字号受控避免过大遮盖
+          lfs = Math.max(10, Math.min(22, Math.round(fs * 0.3)));
+          g.textAlign = 'left'; g.textBaseline = 'middle';
+          lx = lp[0] + 7; ly = lp[1] - 7;
+        }
+        g.font = '600 ' + lfs + 'px Inter, "Noto Sans SC", sans-serif';
+        g.lineWidth = Math.max(2, Math.round(lfs * 0.22));
         g.strokeStyle = 'rgba(0,0,0,0.85)';
         g.strokeText(labelText(p), lx, ly);
         g.fillStyle = '#ffffff';
@@ -1847,38 +2099,63 @@ body {
     }
   }
   function exportImage(mode) {
-    if (!img) { toast('请先加载图片'); return; }
+    if (!img && !remoteImg && !vectorDoc) { toast('请先加载图片'); return; }
     if (!points.length) { toast('暂无标注'); return; }
+    if (mode === 'full' && vectorDoc) { exportVectorFull(); return; }   // CAD 图纸整图：矢量重绘
+    if (mode === 'full' && remoteImg) { exportRemoteFull(); return; }  // 超大图整图走主进程（自带 loading）
+    // 本地导出：大 canvas 的 PNG 编码是同步阻塞且可能卡几十秒，先显示转圈遮罩，
+    // 延迟一帧再执行，确保遮罩渲染出来后再进入阻塞编码
+    showLoading();
+    setTimeout(function () {
+      try { exportLocalImage(mode); } finally { hideLoading(); }
+    }, 30);
+  }
+
+  // 本地（非超大图整图 / 窗口）导出：同步绘制 + PNG 编码
+  function exportLocalImage(mode) {
     var c = document.createElement('canvas');
     var g;
     var base = (currentImgName || 'image').replace(/\.[^.]+$/, '');
     var name;
     if (mode === 'viewport') {
-      // 导出当前窗口可见区域（按当前缩放与窗口尺寸）
       var W = mainEl.clientWidth, H = mainEl.clientHeight;
       c.width = W; c.height = H;
       g = c.getContext('2d');
       g.fillStyle = '#eaf3fb';
       g.fillRect(0, 0, W, H);
-      var vx0 = (0 - view.tx) / view.scale, vy0 = (0 - view.ty) / view.scale;
-      var vx1 = (W - view.tx) / view.scale, vy1 = (H - view.ty) / view.scale;
-      vx0 = Math.max(0, vx0); vy0 = Math.max(0, vy0);
-      vx1 = Math.min(imgW, vx1); vy1 = Math.min(imgH, vy1);
-      g.save();
-      g.translate(-vx0 * view.scale, -vy0 * view.scale);
-      g.scale(view.scale, view.scale);
-      g.drawImage(img, 0, 0, imgW, imgH);
-      g.restore();
-      drawAnnotationLayer(g, function (x, y) { return [(x - vx0) * view.scale, (y - vy0) * view.scale]; },
-        Math.max(3, pointSize / 2), Math.max(12, Math.round(pointSize * 0.85)));
-      name = '标注窗口_' + base + '_' + timestamp() + '.png';
+      if (remoteImg || vectorDoc) {
+        // 超大图 / CAD 图纸：直接截取当前屏幕（瓦片或矢量 + 标注）
+        g.drawImage(canvas, 0, 0, canvas.width, canvas.height, 0, 0, W, H);
+        name = '标注窗口_' + base + '_' + timestamp() + '.png';
+      } else {
+        // 导出当前窗口可见区域（按当前缩放与窗口尺寸）
+        var vx0 = (0 - view.tx) / view.scale, vy0 = (0 - view.ty) / view.scale;
+        var vx1 = (W - view.tx) / view.scale, vy1 = (H - view.ty) / view.scale;
+        vx0 = Math.max(0, vx0); vy0 = Math.max(0, vy0);
+        vx1 = Math.min(imgW, vx1); vy1 = Math.min(imgH, vy1);
+        g.save();
+        g.translate(-vx0 * view.scale, -vy0 * view.scale);
+        g.scale(view.scale, view.scale);
+        g.drawImage(img, 0, 0, imgW, imgH);
+        g.restore();
+        drawAnnotationLayer(g, function (x, y) { return [(x - vx0) * view.scale, (y - vy0) * view.scale]; },
+          Math.max(3, pointSize / 2), Math.max(12, Math.round(pointSize * 0.85)));
+        name = '标注窗口_' + base + '_' + timestamp() + '.png';
+      }
     } else {
-      // 导出整张图片（原始分辨率）
-      c.width = imgW; c.height = imgH;
+      // 导出整张图片。canvas 位图有硬上限（约 1.63 亿像素 / 16384×16384），
+      // 超过后 toDataURL 会得到空图（导出 0 字节文件）。超大图按最长边缩放到 8192 再叠加标注。
+      var sc = 1;
+      if (imgW * imgH > 16384 * 16384) {
+        sc = Math.min(1, 8192 / Math.max(imgW, imgH));
+      }
+      var ow = Math.max(1, Math.round(imgW * sc));
+      var oh = Math.max(1, Math.round(imgH * sc));
+      c.width = ow; c.height = oh;
       g = c.getContext('2d');
-      g.drawImage(img, 0, 0, imgW, imgH);
-      var R = Math.max(3, Math.round(Math.min(imgW, imgH) * 0.008));
-      drawAnnotationLayer(g, function (x, y) { return [x, y]; }, R, Math.max(12, Math.round(R * 1.6)));
+      g.drawImage(img, 0, 0, ow, oh);
+      var R = Math.max(3, Math.round(Math.min(ow, oh) * 0.008));
+      drawAnnotationLayer(g, function (x, y) { return [x * sc, y * sc]; }, R, Math.max(12, Math.round(R * 1.6)));
       name = '标注结果_' + base + '_' + timestamp() + '.png';
     }
 
@@ -1892,6 +2169,90 @@ body {
     a.click();
     a.remove();
     toast(mode === 'viewport' ? '已导出当前窗口图片' : '已导出整张图片');
+  }
+
+  // CAD 图纸整图导出：按矢量重绘一张高分辨率底图，再叠加标注
+  function exportVectorFull() {
+    var doc = vectorDoc;
+    if (!doc) return;
+    showLoading();
+    setTimeout(function () {
+      try {
+        // 与位图一致：最长边限制在 8192，避免超出 canvas 上限导出空图
+        var scale = Math.min(1, 8192 / Math.max(doc.w, doc.h));
+        var outW = Math.max(1, Math.round(doc.w * scale));
+        var outH = Math.max(1, Math.round(doc.h * scale));
+        var c = document.createElement('canvas');
+        c.width = outW; c.height = outH;
+        var g = c.getContext('2d');
+        paintVector(g, doc, 0, 0, doc.w, doc.h, outW, outH);
+        var R = Math.max(3, Math.round(Math.min(outW, outH) * 0.008));
+        drawAnnotationLayer(g, function (x, y) { return [x * scale, y * scale]; }, R, Math.max(12, Math.round(R * 1.6)));
+        var url;
+        try { url = c.toDataURL('image/png'); }
+        catch (e) { toast('导出失败：' + (e && e.message ? e.message : e)); return; }
+        var base = (currentImgName || 'drawing').replace(/\.[^.]+$/, '');
+        var a = document.createElement('a');
+        a.href = url;
+        a.download = '标注结果_' + base + '_' + timestamp() + '.png';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        toast('已导出整张图纸');
+      } finally {
+        hideLoading();
+      }
+    }, 30);
+  }
+
+  // 超大图整图导出：主进程 sharp 缩放到目标分辨率生成底图，前端叠加标注后导出 PNG
+  function exportRemoteFull() {
+    if (!window.electronAPI) { toast('桌面版才能导出整图'); return; }
+    // 导出最长边（像素）：8192 高清，内存可控；原始分辨率过大（上亿像素）无法在浏览器合成
+    var maxDim = 8192;
+    var scale = Math.min(1, maxDim / Math.max(imgW, imgH));
+    var outW = Math.max(1, Math.round(imgW * scale));
+    var outH = Math.max(1, Math.round(imgH * scale));
+    showLoading();
+    var meta = remoteImg;
+    window.electronAPI.renderResized(meta.path, outW, outH, meta.min, meta.max, meta.depth).then(function (buf) {
+      var blob = new Blob([buf], { type: 'image/jpeg' });
+      if (window.createImageBitmap) {
+        createImageBitmap(blob).then(function (base) {
+          composeExport(base, outW, outH, scale);
+        }).catch(function () { hideLoading(); toast('导出失败：底图解码错误'); });
+      } else {
+        var url = URL.createObjectURL(blob);
+        var tmp = new Image();
+        tmp.onload = function () { composeExport(tmp, outW, outH, scale); };
+        tmp.onerror = function () { URL.revokeObjectURL(url); hideLoading(); toast('导出失败：底图解码错误'); };
+        tmp.src = url;
+      }
+    }).catch(function (e) {
+      hideLoading();
+      toast('导出失败：' + (e && e.message ? e.message : e));
+    });
+  }
+
+  function composeExport(base, outW, outH, scale) {
+    var c = document.createElement('canvas');
+    c.width = outW; c.height = outH;
+    var g = c.getContext('2d');
+    g.drawImage(base, 0, 0, outW, outH);
+    var R = Math.max(3, Math.round(Math.min(outW, outH) * 0.008));
+    drawAnnotationLayer(g, function (x, y) { return [x * scale, y * scale]; }, R, Math.max(12, Math.round(R * 1.6)));
+    hideLoading();
+    if (base.close) { try { base.close(); } catch (e) {} }
+    var name = '标注结果_' + (currentImgName || 'image').replace(/\.[^.]+$/, '') + '_' + timestamp() + '.png';
+    c.toBlob(function (blob2) {
+      if (!blob2) { toast('导出失败'); return; }
+      var url = URL.createObjectURL(blob2);
+      var a = document.createElement('a');
+      a.href = url; a.download = name;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function () { URL.revokeObjectURL(url); }, 15000);
+      toast('已导出整图（' + outW + ' × ' + outH + '）');
+    }, 'image/png');
   }
 
   // 解析 CSV（兼容有无 type/width/height 列）
@@ -2000,6 +2361,1053 @@ body {
     reader.readAsText(file, 'utf-8');
   }
 
+  // ===== 超大图瓦片渲染（Electron + 主进程 sharp 引擎） =====
+  // 判断是否走主进程瓦片渲染：桌面版且文件足够大
+  function shouldUseRemote(file) {
+    if (!window.electronAPI || !window.electronAPI.isElectron) return false;
+    if (isCad(file)) return false;                // CAD 图纸走矢量渲染，绝不交给 sharp
+    if (sharpAvailable === false) return false;   // 引擎确认不可用则回退
+    var big = file.size > 200 * 1024 * 1024;      // 任意格式超过 200MB
+    // TIFF 压缩率高，文件大小与像素数脱钩：一张 32MB 的 16-bit TIFF 解压后可能上亿像素，
+    // 前端 UTIF 解码会爆内存。只要 sharp 可用，TIFF 一律走主进程瓦片渲染（内存恒定、支持 16-bit）。
+    return big || isTiff(file);
+  }
+
+  // 拿不到真实路径时写入临时文件再走瓦片渲染
+  function saveToTempThenRemote(file) {
+    var reader = new FileReader();
+    showLoading();
+    reader.onload = function () {
+      window.electronAPI.saveTemp(file.name, reader.result).then(function (tmpPath) {
+        loadRemoteImage(tmpPath, file.name, file);
+      }).catch(function (e) {
+        hideLoading();
+        toast('文件处理失败，已改用普通模式');
+        sharpAvailable = false;
+        loadImageFromFileLocal(file);
+      });
+    };
+    reader.onerror = function () { hideLoading(); toast('文件读取失败'); };
+    reader.readAsArrayBuffer(file);
+  }
+
+  // 普通位图浏览器解码失败（尺寸超限 / 格式异常）时，桌面引擎可用则回退到瓦片渲染
+  function tryRemoteFallback(file) {
+    if (!window.electronAPI || !window.electronAPI.isElectron) return false;
+    if (sharpAvailable === false) return false;
+    var p = null;
+    try { p = window.electronAPI.getPathForFile(file); } catch (e) { p = null; }
+    if (p) { loadRemoteImage(p, file.name, file); return true; }
+    saveToTempThenRemote(file);
+    return true;
+  }
+
+  function loadRemoteImage(filePath, name, fallbackFile) {
+    showLoading();
+    window.electronAPI.getMeta(filePath).then(function (meta) {
+      commitRemoteImage(meta, filePath, name);
+    }).catch(function (e) {
+      hideLoading();
+      if (fallbackFile) {
+        sharpAvailable = false;
+        loadImageFromFileLocal(fallbackFile);
+      } else {
+        toast('图片加载失败：' + (e && e.message ? e.message : e));
+      }
+    });
+  }
+
+  // 会话恢复（供本地 / 远程两种加载路径共用）
+  function restoreSession(name, w, h) {
+    var saved = peekSession();
+    var restored = false;
+    if (saved && saved.name === name && saved.w === w && saved.h === h) {
+      points = saved.points || [];
+      restored = points.length > 0;
+    } else {
+      points = [];
+    }
+    // 旧版文字字号迁移：旧版 size 为 0.4~6 的倍率，新版为像素字号
+    for (var mi = 0; mi < points.length; mi++) {
+      var mp = points[mi];
+      if (mp && mp.type === 'text' && typeof mp.size === 'number' && mp.size > 0 && mp.size <= 6) {
+        mp.size = Math.round(mp.size * TEXT_BASE);
+      }
+    }
+    undoStack = [];
+    renumber();
+    imageLayer = null; imageLayerView = null;
+    return restored;
+  }
+
+  // 释放一个位图：ImageBitmap 需显式 close 才会释放 GPU/本地内存，Image/canvas 交给 GC
+  function releaseBitmap(bmp) {
+    if (bmp && bmp.close) { try { bmp.close(); } catch (e) {} }
+  }
+  // 替换瓦片位图：先释放旧的，避免换图/刷新时旧瓦片位图长期占用内存
+  function setTileBitmap(bmp) {
+    releaseBitmap(tileBitmap);
+    tileBitmap = bmp;
+  }
+
+  function commitRemoteImage(meta, filePath, name) {
+    hideLoading();
+    if (imgUrl) { URL.revokeObjectURL(imgUrl); imgUrl = null; }
+    if (img && img.close) { try { img.close(); } catch (e) {} }
+    img = null;
+    remoteImg = { path: filePath, name: name, w: meta.width, h: meta.height, min: meta.min, max: meta.max, depth: meta.depth, pyramid: null };
+    releaseBitmap(tileBitmap);
+    tileBitmap = null; tileView = null;
+    if (overviewBitmap && overviewBitmap.close) { try { overviewBitmap.close(); } catch (e) {} }
+    overviewBitmap = null;
+    overviewLoaded = false;
+    imgW = meta.width; imgH = meta.height;
+    currentImgName = name;
+    dropHint.classList.add('hidden');
+    floatToolbar.classList.remove('hidden');
+    var restored = restoreSession(name, imgW, imgH);
+    fit();
+    saveState();
+    refreshUI();
+    // 概览也要读原图解码，延迟片刻让界面先渲染、优先响应用户，避免导入瞬间与 UI 抢 CPU
+    if (window._overviewTimer) clearTimeout(window._overviewTimer);
+    window._overviewTimer = setTimeout(function () {
+      if (remoteImg && remoteImg.path === filePath) loadOverview();
+    }, 400);
+    // 金字塔生成是重任务（几 GB 图可能耗时数分钟、占满 CPU/IO），
+    // 不在加载时立即生成，改为首次真正需要高清瓦片时再懒加载，避免加载后系统卡顿。
+    if (restored) toast('已恢复上次标注 ' + points.length + ' 个');
+    else toast('图片已加载（瓦片渲染，GPU 加速）');
+  }
+
+  // 当前视图下图片可见区域（图像坐标），不可见返回 null
+  function visibleImageRegion() {
+    var W = mainEl.clientWidth, H = mainEl.clientHeight;
+    var vx0 = Math.max(0, (0 - view.tx) / view.scale);
+    var vy0 = Math.max(0, (0 - view.ty) / view.scale);
+    var vx1 = Math.min(imgW, (W - view.tx) / view.scale);
+    var vy1 = Math.min(imgH, (H - view.ty) / view.scale);
+    if (vx1 <= vx0 || vy1 <= vy0) return null;
+    return { vx0: vx0, vy0: vy0, vx1: vx1, vy1: vy1 };
+  }
+
+  // 加载整图概览（低分辨率基础层）：缩放/平移期间用它做 GPU 合成层兜底，避免每次都解码原图
+  function loadOverview() {
+    if (!remoteImg || !window.electronAPI) return;
+    var path = remoteImg.path;
+    // 概览是后台增强层，不再显示全屏遮罩；否则概览加载慢/失败时会挡住界面，导致标记表点击无反应
+    // 高配模式用更高分辨率的基础层（8192px）：加载即清晰、放大不虚，无需频繁请求瓦片
+    var maxDim = highResMode ? 8192 : 2048;
+    window.electronAPI.overview(path, maxDim, remoteImg.min, remoteImg.max).then(function (res) {
+      if (!remoteImg || remoteImg.path !== path) return;   // 期间已切换其它图
+      var blob = new Blob([res.buf], { type: 'image/jpeg' });
+      function done(bmp) {
+        if (!remoteImg || remoteImg.path !== path) {
+          if (bmp && bmp.close) { try { bmp.close(); } catch (e) {} }
+          return;
+        }
+        if (overviewBitmap && overviewBitmap.close) { try { overviewBitmap.close(); } catch (e) {} }
+        overviewBitmap = bmp;
+        overviewLoaded = true;
+        render(false);
+      }
+      function fail() {
+        overviewLoaded = true;
+        if (remoteImg) requestTileIfNeeded();   // 概览失败则退回瓦片请求
+      }
+      if (window.createImageBitmap) {
+        createImageBitmap(blob).then(done).catch(fail);
+      } else {
+        var url = URL.createObjectURL(blob);
+        var tmp = new Image();
+        tmp.onload = function () { done(tmp); };
+        tmp.onerror = function () { URL.revokeObjectURL(url); fail(); };
+        tmp.src = url;
+      }
+    }).catch(function () {
+      overviewLoaded = true;
+      if (remoteImg) requestTileIfNeeded();
+    });
+  }
+
+  // 后台生成/复用图像金字塔：之后放大取瓦片从 1 秒级降到几十毫秒
+  function ensurePyramid() {
+    if (bgPaused) return;   // 文件对话框打开期间暂停重任务
+    if (!remoteImg || !window.electronAPI) return;
+    var path = remoteImg.path;
+    window.electronAPI.ensurePyramid(path).then(function (res) {
+      if (!remoteImg || remoteImg.path !== path) return;   // 期间已切换其它图
+      remoteImg.pyramid = res.path;
+      // 金字塔就绪：若当前视图正需要高清瓦片，立即用金字塔重新请求
+      if (overviewLoaded) {
+        tileView = null;
+        requestTileIfNeeded();
+      }
+    }).catch(function () {
+      // 金字塔生成失败则继续用原始路径（慢但可用）
+    });
+  }
+
+  // 绘制超大图：概览铺底（整图完整、任何缩放/平移下不出现空白或缺角），视图与瓦片快照一致时叠加高清瓦片
+  function drawRemoteTile() {
+    if (overviewBitmap) {
+      ctx.drawImage(overviewBitmap, view.tx, view.ty, imgW * view.scale, imgH * view.scale);
+    }
+    if (tileBitmap && tileView &&
+        tileView.scale === view.scale && tileView.tx === view.tx && tileView.ty === view.ty) {
+      ctx.drawImage(tileBitmap,
+        view.tx + tileView.vx0 * view.scale, view.ty + tileView.vy0 * view.scale,
+        (tileView.vx1 - tileView.vx0) * view.scale, (tileView.vy1 - tileView.vy0) * view.scale);
+    }
+  }
+
+  // 视图变化且瓦片未覆盖时，重新请求当前可见区域
+  function requestTileIfNeeded() {
+    if (bgPaused) return;   // 文件对话框打开期间暂停取瓦片
+    if (vectorDoc) { requestVectorTileIfNeeded(); return; }   // CAD 图纸走本地矢量重绘，不经过 IPC
+    if (!remoteImg) return;
+    if (!overviewLoaded) return;   // 概览未就绪前不请求高清瓦片（避免与概览加载同时解码原图）
+    var r = visibleImageRegion();
+    if (!r) return;
+    // 概览已足够清晰（当前缩放级别下概览无需被放大 1.5 倍以上）时不请求高清瓦片，保证缩放流畅；
+    // 高配模式的概览分辨率更高（8192px），此阈值随之提高，绝大多数缩放级别都直接显示高清概览
+    var ow = overviewBitmap && (overviewBitmap.width || overviewBitmap.naturalWidth);
+    if (ow && (imgW * view.scale) <= ow * 1.5) {
+      return;
+    }
+    // 真正需要高清瓦片了：若金字塔尚未生成，触发后台懒加载（只生成一次），
+    // 避免在导入图片时立即占满 CPU/IO 导致系统（含文件对话框）卡顿
+    if (!remoteImg.pyramid && !remoteImg._pyramidRequested) {
+      remoteImg._pyramidRequested = true;
+      ensurePyramid();
+    }
+    // 注意：tileView 里存的是「取整后」的区域。这里也必须用同一份取整结果去比对，
+    // 否则浮点区域永远不相等 → 每帧都重新请求瓦片（位图表现为后台不停重取，矢量表现为递归爆栈）。
+    var b = tileBounds(r);
+    if (!b) return;
+    if (tileView && tileView.scale === view.scale && tileView.tx === view.tx && tileView.ty === view.ty &&
+        tileView.vx0 === b.vx0 && tileView.vy0 === b.vy0 && tileView.vx1 === b.vx1 && tileView.vy1 === b.vy1) {
+      return;
+    }
+    requestTile(b);
+  }
+
+  // 边界取整：向外扩到整数并夹在 [0, imgW/imgH]，避免浮点误差让提取区域越界导致边缘被切
+  function tileBounds(r) {
+    var vx0 = Math.max(0, Math.floor(r.vx0));
+    var vy0 = Math.max(0, Math.floor(r.vy0));
+    var vx1 = Math.min(imgW, Math.ceil(r.vx1));
+    var vy1 = Math.min(imgH, Math.ceil(r.vy1));
+    if (vx1 <= vx0 || vy1 <= vy0) return null;
+    return { vx0: vx0, vy0: vy0, vx1: vx1, vy1: vy1 };
+  }
+
+  function requestTile(b) {
+    if (bgPaused) return;   // 文件对话框打开期间暂停取瓦片
+    if (!remoteImg || !window.electronAPI) return;
+    var vx0, vy0, vx1, vy1;
+    if (b) {
+      vx0 = b.vx0; vy0 = b.vy0; vx1 = b.vx1; vy1 = b.vy1;
+    } else {
+      var r = visibleImageRegion();
+      if (!r) return;
+      b = tileBounds(r);
+      if (!b) return;
+      vx0 = b.vx0; vy0 = b.vy0; vx1 = b.vx1; vy1 = b.vy1;
+    }
+    var dpr = canvas.dpr || 1;
+    var outW = Math.max(1, Math.min(8192, Math.round((vx1 - vx0) * view.scale * dpr)));
+    var outH = Math.max(1, Math.min(8192, Math.round((vy1 - vy0) * view.scale * dpr)));
+    var seq = ++tilePending;
+    var meta = remoteImg;
+    window.electronAPI.renderRegion(meta.pyramid || meta.path, {
+      left: vx0, top: vy0, width: vx1 - vx0, height: vy1 - vy0,
+      outW: outW, outH: outH,
+      min: meta.min, max: meta.max, depth: meta.depth
+    }).then(function (buf) {
+      if (seq !== tilePending) return;   // 丢弃过期响应
+      var bytes = new Uint8Array(buf);
+      var blob = new Blob([bytes], { type: 'image/jpeg' });
+      if (window.createImageBitmap) {
+        createImageBitmap(blob).then(function (bmp) {
+          if (seq !== tilePending) { bmp.close && bmp.close(); return; }
+          setTileBitmap(bmp);
+          tileView = { scale: view.scale, tx: view.tx, ty: view.ty, vx0: vx0, vy0: vy0, vx1: vx1, vy1: vy1 };
+          render(false);
+        });
+      } else {
+        var url = URL.createObjectURL(blob);
+        var tmp = new Image();
+        tmp.onload = function () {
+          if (seq !== tilePending) { URL.revokeObjectURL(url); return; }
+          setTileBitmap(tmp);
+          tileView = { scale: view.scale, tx: view.tx, ty: view.ty, vx0: vx0, vy0: vy0, vx1: vx1, vy1: vy1 };
+          render(false);
+        };
+        tmp.src = url;
+      }
+    }).catch(function (e) {
+      if (seq === tilePending) toast('瓦片渲染失败：' + (e && e.message ? e.message : e));
+    });
+  }
+
+  // 报告 GPU 加速状态（帮助菜单）
+  function reportGpu() {
+    if (!window.electronAPI) return;
+    window.electronAPI.gpuInfo().then(function (info) {
+      var lines = [];
+      if (info.sharpLoaded != null) lines.push('图像引擎(sharp/libvips)：' + (info.sharpLoaded ? '可用' : '不可用'));
+      var s = info.gpuFeatureStatus || {};
+      function on(v) { return v && String(v).indexOf('enabled') === 0; }
+      lines.push('GPU 合成：' + (on(s.gpu_compositing) ? '已启用' : (s.gpu_compositing || '未知')));
+      lines.push('WebGL：' + (on(s.webgl) ? '已启用' : (s.webgl || '未知')));
+      lines.push('2D 画布加速：' + (on(s['2d_canvas']) ? '已启用' : (s['2d_canvas'] || '未知')));
+      lines.push('Electron ' + (info.versions && info.versions.electron) + ' / Chromium ' + (info.versions && info.versions.chrome));
+      alert('GPU 加速状态\n\n' + lines.join('\n'));
+    });
+  }
+
+  // ===== CAD 矢量渲染（DXF / DWG）=====
+  // 显示机制与位图瓦片完全一致（overviewBitmap 概览铺底 + tileBitmap 高清瓦片叠加），
+  // 区别只是瓦片由「本地按当前缩放重绘矢量」得到 —— 所以放大到任何倍数都清晰不虚。
+  // 关键约定：解析阶段就把 DXF 的 Y 轴向上统一翻成 Y 轴向下（下称 doc 坐标系），
+  // 之后标注坐标、导出、会话恢复全部沿用原有逻辑，无需任何特殊分支。
+  var vectorDoc = null;        // { name, w, h, items, grid, bgDark }
+  var vectorTileCanvas = null; // 矢量瓦片复用的离屏画布
+  var vectorTileBusy = false;  // 矢量瓦片重绘中（render 会回调到这里，需防递归）
+  var ARC_SEGS = 24;           // 每段凸度圆弧的采样段数
+
+  function isDxf(file) {
+    var n = (file && file.name ? file.name : '').toLowerCase();
+    return n.slice(-4) === '.dxf';
+  }
+  function isDwg(file) {
+    var n = (file && file.name ? file.name : '').toLowerCase();
+    return n.slice(-4) === '.dwg';
+  }
+  function isCad(file) { return isDxf(file) || isDwg(file); }
+  function deg2rad(d) { return (d || 0) * Math.PI / 180; }
+
+  // ---------- 文本编码 ----------
+  // R2007（AC1021）及之后的 DXF 一律是 UTF-8（与 $DWGCODEPAGE 无关）；
+  // 更早的版本按 $DWGCODEPAGE 指定的 ANSI 代码页。猜错时用替换字符回退重试。
+  function decodeDxfBuffer(buf) {
+    var bytes = buf instanceof Uint8Array ? buf : new Uint8Array(buf);
+    var head = '';
+    for (var i = 0, n = Math.min(bytes.length, 8192); i < n; i++) head += String.fromCharCode(bytes[i]);
+    var verM = head.match(/\$ACADVER[\s\S]{0,50}?(AC\d{4})/);
+    var cpM = head.match(/\$DWGCODEPAGE[\s\S]{0,50}?(ANSI_\d+)/);
+    var enc;
+    if (bytes[0] === 0xEF && bytes[1] === 0xBB && bytes[2] === 0xBF) enc = 'utf-8';
+    else if (verM && parseInt(verM[1].slice(2), 10) >= 1021) enc = 'utf-8';
+    else {
+      enc = {
+        ANSI_936: 'gbk', ANSI_950: 'big5', ANSI_932: 'shift_jis', ANSI_949: 'euc-kr',
+        ANSI_1252: 'windows-1252', ANSI_1250: 'windows-1250', ANSI_1251: 'windows-1251',
+        ANSI_1254: 'windows-1254', ANSI_1257: 'windows-1257'
+      }[cpM ? cpM[1] : ''] || 'gbk';
+    }
+    var text = new TextDecoder(enc).decode(bytes);
+    if (text.indexOf('�') >= 0 && enc !== 'utf-8') {
+      var alt = new TextDecoder('utf-8').decode(bytes);
+      if (alt.indexOf('�') < 0) return alt;
+    }
+    return text;
+  }
+
+  // ---------- 2×3 仿射矩阵 [a,b,c,d,e,f]：(x,y) → (a·x + c·y + e, b·x + d·y + f) ----------
+  function matMul(m1, m2) {   // 先作用 m2，再作用 m1
+    if (!m2) return m1;
+    if (!m1) return m2;
+    return [
+      m1[0] * m2[0] + m1[2] * m2[1], m1[1] * m2[0] + m1[3] * m2[1],
+      m1[0] * m2[2] + m1[2] * m2[3], m1[1] * m2[2] + m1[3] * m2[3],
+      m1[0] * m2[4] + m1[2] * m2[5] + m1[4], m1[1] * m2[4] + m1[3] * m2[5] + m1[5]
+    ];
+  }
+  function matPoint(m, x, y) {
+    if (!m) return { x: x, y: y };
+    return { x: m[0] * x + m[2] * y + m[4], y: m[1] * x + m[3] * y + m[5] };
+  }
+  function matScaleOf(m) {   // 均匀缩放系数（块参照一般只有等比缩放）
+    if (!m) return 1;
+    return Math.sqrt(Math.abs(m[0] * m[3] - m[1] * m[2])) || 1;
+  }
+  function matAngleOf(m) { return m ? Math.atan2(m[1], m[0]) : 0; }
+
+  // 块参照的局部→世界变换：world = pos + R(rot)·S(sx,sy)·(local - base)
+  function insertMatrix(pos, sx, sy, rotDeg, base) {
+    var th = deg2rad(rotDeg);
+    var cs = Math.cos(th), sn = Math.sin(th);
+    sx = (typeof sx === 'number' && sx !== 0) ? sx : 1;
+    sy = (typeof sy === 'number' && sy !== 0) ? sy : 1;
+    var bx = base ? base.x : 0, by = base ? base.y : 0;
+    var a = cs * sx, b = sn * sx, c = -sn * sy, d = cs * sy;
+    return [a, b, c, d, (pos ? pos.x : 0) - (a * bx + c * by), (pos ? pos.y : 0) - (b * bx + d * by)];
+  }
+
+  // ---------- 凸度圆弧（LWPOLYLINE / POLYLINE 的 bulge 段） ----------
+  // bulge = tan(包含角/4)，正值表示自起点向终点逆时针（世界坐标）。
+  // 圆心有两个候选（弦两侧），取「起点→终点逆时针扫过的角度」与 th 符号一致的那个。
+  function bulgeArc(x1, y1, x2, y2, bg) {
+    var th = 4 * Math.atan(bg);
+    if (!isFinite(th) || Math.abs(th) < 1e-9) return null;
+    var dx = x2 - x1, dy = y2 - y1;
+    var chord = Math.sqrt(dx * dx + dy * dy);
+    if (chord < 1e-12) return null;
+    var sn = Math.sin(Math.abs(th) / 2);
+    if (sn < 1e-12) return null;
+    var r = chord / (2 * sn);
+    var h = Math.sqrt(Math.max(0, r * r - chord * chord / 4));
+    var mx = (x1 + x2) / 2, my = (y1 + y2) / 2;
+    var nx = -dy / chord, ny = dx / chord;
+    var want = th > 0 ? Math.abs(th) : (Math.PI * 2 - Math.abs(th));
+    var best = null;
+    for (var k = 0; k < 2; k++) {
+      var sg = k === 0 ? 1 : -1;
+      var cx = mx + sg * h * nx, cy = my + sg * h * ny;
+      var sweep = Math.atan2(y2 - cy, x2 - cx) - Math.atan2(y1 - cy, x1 - cx);
+      while (sweep <= 0) sweep += Math.PI * 2;
+      while (sweep > Math.PI * 2) sweep -= Math.PI * 2;
+      var err = Math.abs(sweep - want);
+      if (!best || err < best.err) best = { cx: cx, cy: cy, th: th, err: err };
+    }
+    return best;
+  }
+
+  function samplePolyline(pts, closed) {
+    var out = [];
+    var n = pts.length;
+    if (!n) return out;
+    var segs = closed ? n : n - 1;
+    for (var i = 0; i < segs; i++) {
+      var a = pts[i], b = pts[(i + 1) % n];
+      out.push({ x: a.x, y: a.y });
+      if (a.b) {
+        var arc = bulgeArc(a.x, a.y, b.x, b.y, a.b);
+        if (arc) {
+          var vx = a.x - arc.cx, vy = a.y - arc.cy;
+          for (var s = 1; s < ARC_SEGS; s++) {
+            var ang = arc.th * (s / ARC_SEGS);
+            var ca = Math.cos(ang), sa = Math.sin(ang);
+            out.push({ x: arc.cx + vx * ca - vy * sa, y: arc.cy + vx * sa + vy * ca });
+          }
+        }
+      }
+    }
+    if (!closed) { var last = pts[n - 1]; out.push({ x: last.x, y: last.y }); }
+    return out;
+  }
+
+  // ---------- 样条（SPLINE）：de Boor 求值 ----------
+  function deBoor(u, p, knots, cps) {
+    var n = cps.length - 1;
+    var k = p;
+    while (k < n && u >= knots[k + 1]) k++;
+    var xs = [], ys = [], j, r, i;
+    for (j = 0; j <= p; j++) { xs[j] = cps[k - p + j].x; ys[j] = cps[k - p + j].y; }
+    for (r = 1; r <= p; r++) {
+      for (j = p; j >= r; j--) {
+        i = k - p + j;
+        var den = knots[i + p - r + 1] - knots[i];
+        var a = den === 0 ? 0 : (u - knots[i]) / den;
+        xs[j] = (1 - a) * xs[j - 1] + a * xs[j];
+        ys[j] = (1 - a) * ys[j - 1] + a * ys[j];
+      }
+    }
+    return { x: xs[p], y: ys[p] };
+  }
+  function sampleSpline(e) {
+    var cps = e.controlPoints;
+    if (!cps || cps.length < 2) return null;
+    var p = e.degreeOfSplineCurve || 3;
+    var knots = e.knotValues;
+    if (!knots || knots.length < cps.length + p + 1) {
+      if (cps.length <= p) p = cps.length - 1;
+      if (p < 1) return null;
+      knots = [];
+      for (var i = 0; i <= cps.length + p; i++) knots.push(i);   // 退化时按均匀节点处理
+    }
+    if (p > cps.length - 1) p = cps.length - 1;
+    var u0 = knots[p], u1 = knots[cps.length];
+    if (!(u1 > u0)) return null;
+    var steps = Math.max(24, Math.min(600, cps.length * 16));
+    var out = [];
+    for (var s = 0; s <= steps; s++) {
+      out.push(deBoor(u0 + (u1 - u0) * (s / steps), p, knots, cps));
+    }
+    return out;
+  }
+
+  // ---------- 文字内容清理 ----------
+  function cleanMText(s) {
+    var t = String(s == null ? '' : s);
+    t = t.replace(/\\\\/g, '\u0001');
+    t = t.replace(/\\P/gi, '\n');
+    t = t.replace(/\\~/g, ' ');
+    t = t.replace(/\\S([^;]*);/gi, function (m, g) { return g.replace(/[\^#]/g, '/'); });
+    t = t.replace(/\\[CcFfHhQqTtWwAa][^;\\]*;/g, '');
+    t = t.replace(/\\[LlOoKk]/g, '');
+    t = t.replace(/[{}]/g, '');
+    t = t.replace(/\u0001/g, '\\');
+    return t;
+  }
+  function cleanText(s) {
+    return String(s == null ? '' : s)
+      .replace(/%%d/gi, '°').replace(/%%c/gi, '⌀').replace(/%%p/gi, '±')
+      .replace(/%%%/g, '%');
+  }
+
+  // ---------- 颜色 ----------
+  function annotateDxf(dxf) {
+    var layers = (dxf.tables && dxf.tables.layer && dxf.tables.layer.layers) || {};
+    var ltypes = (dxf.tables && dxf.tables.lineType && dxf.tables.lineType.lineTypes) || {};
+    var lc = {};
+    for (var ln in layers) if (layerHas(layers, ln)) lc[ln] = layers[ln].color;
+    dxf._lc = lc;
+    var walked = {};
+    function walk(list) {
+      if (!list) return;
+      for (var i = 0; i < list.length; i++) {
+        var e = list[i];
+        if (!e) continue;
+        var lay = e.layer != null ? layers[e.layer] : null;
+        e._col = (typeof e.color === 'number') ? e.color
+          : (lay && typeof lay.color === 'number' ? lay.color : 0xFFFFFF);
+        e._vis = !(lay && lay.visible === false);
+        // 线型：只有实体级 lineType 才足以判定（图层级多为 ByLayer，交给图层表）
+        var ltName = e.lineType;
+        if (ltName && ltName !== 'ByLayer' && ltName !== 'ByBlock' && ltName !== 'Continuous') {
+          var lt = ltypes[ltName];
+          if (lt && lt.pattern && lt.pattern.length) {
+            e._dash = lt.pattern.map(function (v) { return Math.abs(v) || 0.1; });
+          }
+        }
+        if (e.type === 'INSERT' && dxf.blocks && dxf.blocks[e.name] && !walked[e.name]) {
+          walked[e.name] = 1;
+          walk(dxf.blocks[e.name].entities);
+        }
+      }
+    }
+    walk(dxf.entities);
+  }
+  function layerHas(layers, k) { return Object.prototype.hasOwnProperty.call(layers, k); }
+
+  function cadCss(c, dark) {
+    var r = (c >> 16) & 255, g = (c >> 8) & 255, b = c & 255;
+    // 深色背景上的纯黑、浅色背景上的纯白都是 AutoCAD 的 7 号色，直接照画会看不见，做一次互换
+    if (!dark && r > 200 && g > 200 && b > 200) return '#000000';
+    if (dark && r < 40 && g < 40 && b < 40) return '#ffffff';
+    return 'rgb(' + r + ',' + g + ',' + b + ')';
+  }
+
+  // ---------- 实体 → 基础图元（世界坐标） ----------
+  function mkItem(e, M, ctxLayer, lc) {
+    var t = e.type, i;
+    var col = e._col;
+    // AutoCAD 规则：块内位于 0 层的实体，颜色/线型随块参照所在图层
+    if (ctxLayer && (e.layer === '0' || e.layer == null) && lc[ctxLayer] != null) col = lc[ctxLayer];
+    var k = matScaleOf(M), dth = matAngleOf(M);
+
+    if (t === 'LINE') {
+      if (!e.vertices || e.vertices.length < 2) return null;
+      return { k: 'poly', col: col, closed: false, dash: e._dash,
+        pts: [matPoint(M, e.vertices[0].x, e.vertices[0].y), matPoint(M, e.vertices[1].x, e.vertices[1].y)] };
+    }
+
+    if (t === 'LWPOLYLINE' || t === 'POLYLINE') {
+      var vs = e.vertices || [];
+      if (vs.length < 2) return null;
+      var src = [];
+      for (i = 0; i < vs.length; i++) src.push({ x: vs[i].x, y: vs[i].y, b: vs[i].bulge || 0 });
+      var closed = !!(e.shape || (e.flag & 1));
+      var anyB = false;
+      for (i = 0; i < src.length; i++) if (src[i].b) { anyB = true; break; }
+      var flat = [];
+      if (anyB || closed) flat = samplePolyline(src, closed);
+      else for (i = 0; i < src.length; i++) flat.push({ x: src[i].x, y: src[i].y });
+      for (i = 0; i < flat.length; i++) flat[i] = matPoint(M, flat[i].x, flat[i].y);
+      return { k: 'poly', col: col, closed: false, dash: e._dash, pts: flat };
+    }
+
+    if (t === 'CIRCLE') {
+      if (!e.center || !(e.radius > 0)) return null;
+      var cc = matPoint(M, e.center.x, e.center.y);
+      return { k: 'circle', col: col, dash: e._dash, x: cc.x, y: cc.y, r: e.radius * k };
+    }
+
+    if (t === 'ARC') {
+      if (!e.center || !(e.radius > 0)) return null;
+      var ac = matPoint(M, e.center.x, e.center.y);
+      var a0 = deg2rad(e.startAngle), a1 = deg2rad(e.endAngle);
+      if (a1 <= a0) a1 += Math.PI * 2;   // DXF 规定自起点逆时针到终点
+      return { k: 'arc', col: col, dash: e._dash, x: ac.x, y: ac.y, r: e.radius * k,
+        a0: a0 + dth, a1: a1 + dth };
+    }
+
+    if (t === 'ELLIPSE') {
+      if (!e.center || !e.majorAxisEndPoint) return null;
+      var ec = matPoint(M, e.center.x, e.center.y);
+      var ax = e.majorAxisEndPoint.x, ay = e.majorAxisEndPoint.y;
+      var rx = Math.sqrt(ax * ax + ay * ay);
+      if (!(rx > 0)) return null;
+      var ry = rx * (e.axisRatio || 1);
+      var rot = Math.atan2(ay, ax);
+      var b0 = e.startAngle || 0, b1 = e.endAngle;
+      if (b1 == null || Math.abs(b1 - b0) < 1e-9) b1 = b0 + Math.PI * 2;
+      return { k: 'ellipse', col: col, dash: e._dash, x: ec.x, y: ec.y,
+        rx: rx * k, ry: ry * k, rot: rot + dth, a0: b0 + dth, a1: b1 + dth };
+    }
+
+    if (t === 'SPLINE') {
+      var sp = sampleSpline(e);
+      if (!sp || sp.length < 2) return null;
+      for (i = 0; i < sp.length; i++) sp[i] = matPoint(M, sp[i].x, sp[i].y);
+      return { k: 'poly', col: col, closed: !!(e.flag & 1), dash: e._dash, pts: sp };
+    }
+
+    if (t === 'POINT') {
+      if (!e.position) return null;
+      var pp = matPoint(M, e.position.x, e.position.y);
+      return { k: 'point', col: col, x: pp.x, y: pp.y };
+    }
+
+    if (t === 'SOLID' || t === '3DFACE') {
+      var sp2 = e.points || e.vertices;
+      if (!sp2 || sp2.length < 3) return null;
+      var q = [];
+      for (i = 0; i < sp2.length; i++) {
+        if (sp2[i] && typeof sp2[i].x === 'number') q.push(matPoint(M, sp2[i].x, sp2[i].y));
+      }
+      if (q.length < 3) return null;
+      // SOLID 的第 3/4 点顺序是「之」字形，交换后才是四边形
+      if (t === 'SOLID' && q.length === 4) { var tmp = q[2]; q[2] = q[3]; q[3] = tmp; }
+      return { k: 'poly', col: col, closed: true, fill: true, dash: null, pts: q };
+    }
+
+    if (t === 'TEXT') {
+      var tp = e.startPoint || e.position;
+      if (!tp || e.text == null) return null;
+      var tq = matPoint(M, tp.x, tp.y);
+      return { k: 'text', col: col, x: tq.x, y: tq.y, h: Math.abs(e.height || 2.5) * k,
+        rot: deg2rad(e.rotation) + dth, text: cleanText(e.text),
+        ha: e.halign, va: e.valign, lines: 1 };
+    }
+
+    if (t === 'MTEXT') {
+      var mp = e.position || e.startPoint;
+      if (!mp || e.text == null) return null;
+      var mq = matPoint(M, mp.x, mp.y);
+      var body = cleanMText(e.text);
+      if (!body) return null;
+      return { k: 'text', col: col, x: mq.x, y: mq.y, h: Math.abs(e.height || 2.5) * k,
+        rot: deg2rad(e.rotation) + dth, text: body,
+        attach: e.attachmentPoint, mtext: true, lines: body.split('\n').length };
+    }
+
+    return null;   // HATCH / LEADER 等 dxf-parser 不支持的实体：跳过
+  }
+
+  // ---------- 递归展开（INSERT 嵌套 / 块内 0 层继承） ----------
+  function flattenDxf(dxf, list, M, ctxLayer, out) {
+    if (!list) return;
+    var lc = dxf._lc || {};
+    for (var i = 0; i < list.length; i++) {
+      var e = list[i];
+      if (!e || e._vis === false) continue;
+      if (e.type === 'INSERT') {
+        var blk = dxf.blocks && dxf.blocks[e.name];
+        if (!blk || !blk.entities) continue;
+        var cols = Math.max(1, e.columnCount || 1);
+        var rows = Math.max(1, e.rowCount || 1);
+        for (var r = 0; r < rows; r++) {
+          for (var c = 0; c < cols; c++) {
+            var px = (e.position ? e.position.x : 0) + c * (e.columnSpacing || 0);
+            var py = (e.position ? e.position.y : 0) + r * (e.rowSpacing || 0);
+            var m2 = insertMatrix({ x: px, y: py }, e.xScale, e.yScale, e.rotation, blk.position);
+            flattenDxf(dxf, blk.entities, matMul(M, m2), e.layer, out);
+          }
+        }
+        continue;
+      }
+      // 标注（尺寸）实体的内容放在匿名块里，且已是图纸坐标，直接展开
+      if (e.type === 'DIMENSION' && e.block && dxf.blocks && dxf.blocks[e.block]) {
+        flattenDxf(dxf, dxf.blocks[e.block].entities, M, ctxLayer, out);
+        continue;
+      }
+      var it = mkItem(e, M, ctxLayer, lc);
+      if (it) out.push(it);
+    }
+  }
+
+  // 世界坐标 → doc 坐标：y 取反并平移，使 doc 原点落在包围盒左上角
+  function worldToDoc(items, minX, maxY) {
+    for (var i = 0; i < items.length; i++) {
+      var it = items[i];
+      if (it.k === 'poly') {
+        var pts = it.pts;
+        for (var j = 0; j < pts.length; j++) { pts[j] = { x: pts[j].x - minX, y: maxY - pts[j].y }; }
+      } else {
+        it.x -= minX; it.y = maxY - it.y;
+        if (it.rot) it.rot = -it.rot;
+        if (it.k === 'arc' || it.k === 'ellipse') {
+          it.a0 = -it.a0; it.a1 = -it.a1;
+        }
+      }
+    }
+  }
+
+  function itemBox(it) {
+    var x0, y0, x1, y1;
+    if (it.k === 'poly') {
+      x0 = y0 = Infinity; x1 = y1 = -Infinity;
+      for (var i = 0; i < it.pts.length; i++) {
+        var p = it.pts[i];
+        if (p.x < x0) x0 = p.x; if (p.x > x1) x1 = p.x;
+        if (p.y < y0) y0 = p.y; if (p.y > y1) y1 = p.y;
+      }
+      if (!isFinite(x0)) { x0 = y0 = x1 = y1 = 0; }
+    } else if (it.k === 'circle' || it.k === 'arc') {
+      x0 = it.x - it.r; y0 = it.y - it.r; x1 = it.x + it.r; y1 = it.y + it.r;
+    } else if (it.k === 'ellipse') {
+      var rr = Math.max(it.rx, it.ry);
+      x0 = it.x - rr; y0 = it.y - rr; x1 = it.x + rr; y1 = it.y + rr;
+    } else if (it.k === 'text') {
+      var n = Math.max(1, (it.text || '').length > 0 ? Math.max.apply(null, String(it.text).split('\n').map(function (s) { return s.length; })) : 1);
+      var wdt = n * it.h * 0.75 + it.h;         // 粗估文字外框，宁可偏大也不能把文字裁掉
+      x0 = it.x - wdt; y0 = it.y - wdt * 0.5; x1 = it.x + wdt; y1 = it.y + wdt * 0.5;
+    } else {
+      x0 = it.x - 1; y0 = it.y - 1; x1 = it.x + 1; y1 = it.y + 1;
+    }
+    it.x0 = x0; it.y0 = y0; it.x1 = x1; it.y1 = y1;
+  }
+
+  // ---------- 空间索引（均匀网格） ----------
+  function buildVectorIndex(doc) {
+    var items = doc.items, n = items.length;
+    for (var i = 0; i < n; i++) itemBox(items[i]);
+    if (n < 300) { doc.grid = null; return; }
+    var cell = Math.max(doc.w, doc.h) / 64;
+    if (!(cell > 0)) cell = 1;
+    var cols = Math.min(256, Math.max(1, Math.ceil(doc.w / cell)));
+    var rows = Math.min(256, Math.max(1, Math.ceil(doc.h / cell)));
+    var grid = new Array(cols * rows);
+    for (var r = 0; r < rows; r++) {
+      for (var c = 0; c < cols; c++) {
+        var bx0 = c * cell, by0 = r * cell, bx1 = bx0 + cell, by1 = by0 + cell;
+        var bucket = null;
+        for (var j = 0; j < n; j++) {
+          var it = items[j];
+          if (it.x1 < bx0 || it.x0 > bx1 || it.y1 < by0 || it.y0 > by1) continue;
+          (bucket || (bucket = [])).push(j);
+        }
+        if (bucket) grid[r * cols + c] = bucket;
+      }
+    }
+    doc.grid = grid; doc.gcols = cols; doc.grows = rows; doc.gcell = cell;
+    doc._stamp = new Int32Array(n); doc._gen = 0;
+  }
+
+  function queryVector(doc, vx0, vy0, vx1, vy1) {
+    var items = doc.items;
+    if (!doc.grid) {
+      var all = [];
+      for (var i = 0; i < items.length; i++) {
+        var t = items[i];
+        if (t.x1 < vx0 || t.x0 > vx1 || t.y1 < vy0 || t.y0 > vy1) continue;
+        all.push(t);
+      }
+      return all;
+    }
+    var c0 = Math.max(0, Math.floor(vx0 / doc.gcell)), c1 = Math.min(doc.gcols - 1, Math.floor(vx1 / doc.gcell));
+    var r0 = Math.max(0, Math.floor(vy0 / doc.gcell)), r1 = Math.min(doc.grows - 1, Math.floor(vy1 / doc.gcell));
+    var res = [];
+    if (c1 < c0 || r1 < r0) return res;
+    var gen = ++doc._gen, stamp = doc._stamp;
+    for (var r = r0; r <= r1; r++) {
+      for (var c = c0; c <= c1; c++) {
+        var bucket = doc.grid[r * doc.gcols + c];
+        if (!bucket) continue;
+        for (var b = 0; b < bucket.length; b++) {
+          var idx = bucket[b];
+          if (stamp[idx] === gen) continue;
+          stamp[idx] = gen;
+          var it = items[idx];
+          if (it.x1 < vx0 || it.x0 > vx1 || it.y1 < vy0 || it.y0 > vy1) continue;
+          res.push(it);
+        }
+      }
+    }
+    return res;
+  }
+
+  // ---------- 绘制 ----------
+  // 把 doc 坐标的 rect 映射到 outW×outH 的位图上。doc 空间与画布同为 Y 向下，故直接用正比例变换。
+  function paintVector(g, doc, vx0, vy0, vx1, vy1, outW, outH) {
+    var kx = outW / Math.max(1e-9, vx1 - vx0);
+    var ky = outH / Math.max(1e-9, vy1 - vy0);
+    g.setTransform(1, 0, 0, 1, 0, 0);
+    g.fillStyle = doc.bgDark ? '#000000' : '#ffffff';
+    g.fillRect(0, 0, outW, outH);
+
+    var list = queryVector(doc, vx0, vy0, vx1, vy1);
+    g.setTransform(kx, 0, 0, ky, -vx0 * kx, -vy0 * ky);
+    g.lineWidth = 1 / kx;            // 固定 1 设备像素，缩小也不会整条消失
+    g.lineJoin = 'round';
+    g.lineCap = 'butt';
+
+    for (var i = 0; i < list.length; i++) {
+      var it = list[i];
+      if (it.k === 'text') continue;   // 文字在设备坐标下单独绘制
+      var css = cadCss(it.col, doc.bgDark);
+      g.strokeStyle = css;
+      g.fillStyle = css;
+      if (it.dash) g.setLineDash(it.dash); else g.setLineDash([]);
+      g.beginPath();
+      if (it.k === 'poly') {
+        var pts = it.pts;
+        if (pts.length < 2) continue;
+        g.moveTo(pts[0].x, pts[0].y);
+        for (var j = 1; j < pts.length; j++) g.lineTo(pts[j].x, pts[j].y);
+        if (it.closed) g.closePath();
+        if (it.fill) g.fill();
+        g.stroke();
+      } else if (it.k === 'circle') {
+        g.arc(it.x, it.y, it.r, 0, Math.PI * 2);
+        g.stroke();
+      } else if (it.k === 'arc') {
+        // doc 空间里角度是反向的（a0 > a1），用 counterclockwise=true 从 a0 扫到 a1
+        g.arc(it.x, it.y, it.r, it.a0, it.a1, true);
+        g.stroke();
+      } else if (it.k === 'ellipse') {
+        g.ellipse(it.x, it.y, it.rx, it.ry, it.rot, it.a0, it.a1, true);
+        g.stroke();
+      } else if (it.k === 'point') {
+        var s = 3 / kx;
+        g.moveTo(it.x - s, it.y); g.lineTo(it.x + s, it.y);
+        g.moveTo(it.x, it.y - s); g.lineTo(it.x, it.y + s);
+        g.stroke();
+      }
+    }
+    g.setLineDash([]);
+
+    // 文字：字号必须落在设备像素上才稳定，所以回到未变换坐标系逐条绘制
+    g.setTransform(1, 0, 0, 1, 0, 0);
+    for (var m = 0; m < list.length; m++) {
+      var tx = list[m];
+      if (tx.k !== 'text') continue;
+      var px = (tx.x - vx0) * kx, py = (tx.y - vy0) * ky;
+      var fs = tx.h * ky * 1.35;      // DXF 的 height 是字高（近似大写高度），字号需放大一点
+      if (!(fs >= 4)) continue;       // 太小则整片糊在一起，不如不画
+      if (px < -200 || py < -200 || px > outW + 200 || py > outH + 200) continue;
+      g.save();
+      g.translate(px, py);
+      if (tx.rot) g.rotate(tx.rot);
+      g.font = fs + 'px "Microsoft YaHei","Noto Sans SC",Arial,sans-serif';
+      g.fillStyle = cadCss(tx.col, doc.bgDark);
+      g.textAlign = textAlignOf(tx);
+      g.textBaseline = textBaselineOf(tx);
+      var lines = String(tx.text).split('\n');
+      var lh = fs * 1.45;
+      for (var li = 0; li < lines.length; li++) g.fillText(lines[li], 0, li * lh);
+      g.restore();
+    }
+  }
+
+  function textAlignOf(tx) {
+    var a = tx.mtext ? ({ 1: 'left', 2: 'center', 3: 'right', 4: 'left', 5: 'center', 6: 'right', 7: 'left', 8: 'center', 9: 'right' }[tx.attach] || 'left')
+                     : ({ 1: 'center', 2: 'right', 3: 'center', 4: 'center', 5: 'center' }[tx.ha] || 'left');
+    return a;
+  }
+  function textBaselineOf(tx) {
+    var b = tx.mtext ? ({ 1: 'top', 2: 'top', 3: 'top', 4: 'middle', 5: 'middle', 6: 'middle', 7: 'alphabetic', 8: 'bottom', 9: 'bottom' }[tx.attach] || 'top')
+                     : ({ 1: 'bottom', 2: 'middle', 3: 'top' }[tx.va] || 'alphabetic');
+    return b;
+  }
+
+  // ---------- 载入 ----------
+  function parseDxfText(text, name) {
+    if (typeof DxfParser === 'undefined') throw new Error('DXF 解析组件缺失（lib 目录不完整）');
+    var dxf = new DxfParser().parseSync(text);
+    annotateDxf(dxf);
+
+    var items = [];
+    flattenDxf(dxf, dxf.entities, null, null, items);
+    if (!items.length) throw new Error('图纸中没有可显示的图元');
+
+    // 包围盒（世界坐标）
+    var minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    function acc(x, y) {
+      if (!isFinite(x) || !isFinite(y)) return;
+      if (x < minX) minX = x; if (x > maxX) maxX = x;
+      if (y < minY) minY = y; if (y > maxY) maxY = y;
+    }
+    for (var i = 0; i < items.length; i++) {
+      var it = items[i];
+      if (it.k === 'poly') for (var j = 0; j < it.pts.length; j++) acc(it.pts[j].x, it.pts[j].y);
+      else if (it.k === 'circle' || it.k === 'arc') { acc(it.x - it.r, it.y - it.r); acc(it.x + it.r, it.y + it.r); }
+      else if (it.k === 'ellipse') { var rr = Math.max(it.rx, it.ry); acc(it.x - rr, it.y - rr); acc(it.x + rr, it.y + rr); }
+      else acc(it.x, it.y);
+    }
+    if (!isFinite(minX) || maxX <= minX || maxY <= minY) throw new Error('图纸范围无效');
+
+    worldToDoc(items, minX, maxY);
+    var doc = { name: name, w: maxX - minX, h: maxY - minY, items: items, bgDark: true };
+    buildVectorIndex(doc);
+    return doc;
+  }
+
+  // 生成整图概览底图（最长边 ≤2048 的 canvas），复用位图瓦片那套「概览铺底」逻辑
+  function buildVectorOverview() {
+    var doc = vectorDoc;
+    if (!doc) return;
+    var MAX = 2048;
+    var s = Math.min(1, MAX / Math.max(doc.w, doc.h));
+    var ow = Math.max(1, Math.round(doc.w * s));
+    var oh = Math.max(1, Math.round(doc.h * s));
+    var c = document.createElement('canvas');
+    c.width = ow; c.height = oh;
+    paintVector(c.getContext('2d'), doc, 0, 0, doc.w, doc.h, ow, oh);
+    if (overviewBitmap && overviewBitmap.close) { try { overviewBitmap.close(); } catch (e) {} }
+    overviewBitmap = c;
+  }
+
+  // 可见范围的取整区域（与 requestTile 的 tileBounds 同构，只是夹在 doc 尺寸内）
+  function vectorTileBounds() {
+    var doc = vectorDoc;
+    if (!doc) return null;
+    var r = visibleImageRegion();
+    if (!r) return null;
+    var vx0 = Math.max(0, Math.floor(r.vx0));
+    var vy0 = Math.max(0, Math.floor(r.vy0));
+    var vx1 = Math.min(doc.w, Math.ceil(r.vx1));
+    var vy1 = Math.min(doc.h, Math.ceil(r.vy1));
+    if (vx1 <= vx0 || vy1 <= vy0) return null;
+    return { vx0: vx0, vy0: vy0, vx1: vx1, vy1: vy1 };
+  }
+
+  // 重绘矢量瓦片（同步，只画当前可见范围命中的图元）
+  function requestVectorTile(b) {
+    if (vectorTileBusy) return;          // 重绘过程中本函数又会触发 render，这里兜底防递归
+    var doc = vectorDoc;
+    if (!doc) return;
+    if (!b) b = vectorTileBounds();
+    if (!b) return;
+    var vx0 = b.vx0, vy0 = b.vy0, vx1 = b.vx1, vy1 = b.vy1;
+    var dpr = canvas.dpr || 1;
+    var outW = Math.max(1, Math.min(8192, Math.round((vx1 - vx0) * view.scale * dpr)));
+    var outH = Math.max(1, Math.min(8192, Math.round((vy1 - vy0) * view.scale * dpr)));
+    vectorTileBusy = true;
+    try {
+      // 离屏 canvas 池：尺寸不变就复用，避免平移时反复分配大画布
+      var c = vectorTileCanvas;
+      if (!c || c.width !== outW || c.height !== outH) {
+        c = document.createElement('canvas');
+        c.width = outW; c.height = outH;
+        vectorTileCanvas = c;
+      }
+      paintVector(c.getContext('2d'), doc, vx0, vy0, vx1, vy1, outW, outH);
+      releaseBitmap(tileBitmap);
+      tileBitmap = c;
+      tileView = { scale: view.scale, tx: view.tx, ty: view.ty, vx0: vx0, vy0: vy0, vx1: vx1, vy1: vy1 };
+      render(false);
+    } finally {
+      vectorTileBusy = false;
+    }
+  }
+
+  function requestVectorTileIfNeeded() {
+    var doc = vectorDoc;
+    if (!doc || bgPaused) return;
+    // 概览已经够密（当前缩放不足 1:1 放大）时不重绘，保证缩放手感
+    var ow = overviewBitmap && overviewBitmap.width;
+    if (ow && (imgW * view.scale) <= ow) return;
+    var b = vectorTileBounds();
+    if (!b) return;
+    if (tileView && tileView.scale === view.scale && tileView.tx === view.tx && tileView.ty === view.ty &&
+        tileView.vx0 === b.vx0 && tileView.vy0 === b.vy0 && tileView.vx1 === b.vx1 && tileView.vy1 === b.vy1) {
+      return;
+    }
+    requestVectorTile(b);
+  }
+
+  // 矢量文档的统一收口（对应位图的 commitImage / commitRemoteImage）
+  function commitVectorDoc(doc, name) {
+    hideLoading();
+    if (imgUrl) { URL.revokeObjectURL(imgUrl); imgUrl = null; }
+    if (img && img.close) { try { img.close(); } catch (e) {} }
+    img = null;
+    remoteImg = null;
+    releaseBitmap(tileBitmap); tileBitmap = null; tileView = null;
+    vectorTileCanvas = null;
+    vectorDoc = doc;
+    imgW = doc.w;
+    imgH = doc.h;
+    currentImgName = name || doc.name || 'drawing.dxf';
+    dropHint.classList.add('hidden');
+    floatToolbar.classList.remove('hidden');
+    buildVectorOverview();
+    overviewLoaded = true;
+    var restored = restoreSession(currentImgName, imgW, imgH);
+    fit();
+    saveState();
+    refreshUI();
+    if (restored) toast('已恢复上次标注 ' + points.length + ' 个');
+    else toast('CAD 图纸已加载（矢量渲染，放大不虚）');
+  }
+
+  // 打开 DXF 文本
+  function loadDxfFromBuffer(buf, name) {
+    showLoading();
+    // 解析是同步的，先让「正在解析」的遮罩渲染出来，再进入阻塞
+    setTimeout(function () {
+      try {
+        var bytes = buf instanceof Uint8Array ? buf : new Uint8Array(buf);
+        if (bytes.length > 22) {
+          var sig = '';
+          for (var i = 0; i < 22; i++) sig += String.fromCharCode(bytes[i]);
+          if (sig.indexOf('AutoCAD Binary DXF') === 0) {
+            hideLoading();
+            toast('这是二进制 DXF，请在 CAD 中另存为 ASCII 格式（DXFOUT 选「精度」而非「Binary」）');
+            return;
+          }
+        }
+        var doc = parseDxfText(decodeDxfBuffer(bytes), name);
+        commitVectorDoc(doc, name);
+      } catch (e) {
+        hideLoading();
+        toast('DXF 解析失败：' + (e && e.message ? e.message : '未知错误'));
+      }
+    }, 30);
+  }
+
+  // 打开 DWG：先经主进程转换为 DXF，再走同一条解析路径
+  function loadDwg(filePath, name) {
+    if (!window.electronAPI || !window.electronAPI.dwgConvert) {
+      toast('DWG 需要在桌面版中打开');
+      return;
+    }
+    showLoading();
+    window.electronAPI.dwgProbe().then(function (p) {
+      if (!p || !p.available) {
+        throw new Error('未找到可用的 DWG 转换器。本机需要安装 AutoCAD（或用 ODA File Converter / dwg2dxf），' +
+          '也可以在 ' + ((p && p.configPath) || '用户数据目录') + ' 里写 dwg-tools.json 指定转换器路径。');
+      }
+      return window.electronAPI.dwgConvert(filePath);
+    }).then(function (res) {
+      return window.electronAPI.readFile(res.dxfPath);
+    }).then(function (buf) {
+      var doc = parseDxfText(decodeDxfBuffer(buf), name);
+      commitVectorDoc(doc, name);
+    }).catch(function (e) {
+      hideLoading();
+      var msg = (e && e.message ? e.message : String(e));
+      // IPC 抛错会带上 "Error invoking remote method 'dwg:convert': " 前缀，去掉更易读
+      msg = msg.replace(/^Error invoking remote method '[^']*':\s*/, '').replace(/^Error:\s*/, '');
+      toast('DWG 转换失败：' + msg);
+    });
+  }
+
   // ===== 图片加载 =====
   function isTiff(file) {
     var name = (file.name || '').toLowerCase();
@@ -2015,12 +3423,32 @@ body {
   function hideLoading() { if (loadingOverlay) loadingOverlay.style.display = 'none'; }
   function loadImageFromFile(file) {
     var isImg = file && file.type && file.type.indexOf('image/') === 0;
-    if (!file || (!isImg && !isTiff(file) && !isPdf(file))) {
-      toast('请选择图片或 PDF 文件'); return;
+    if (!file || (!isImg && !isTiff(file) && !isPdf(file) && !isCad(file))) {
+      toast('请选择图片 / PDF / CAD 图纸'); return;
     }
+    // 切换文件会丢弃当前标注，改用软件自带确认弹窗（与清空/关闭一致），避免误触
     if (points.length && currentImgName && file.name !== currentImgName) {
-      if (!confirm('当前有 ' + points.length + ' 个标注，加载新文件将清除。是否继续？')) return;
+      showConfirm('加载新文件', '当前有 ' + points.length + ' 个标注，加载新文件将清除。是否继续？',
+        function () { startLoadImageFromFile(file); }, '继续');
+      return;
     }
+    startLoadImageFromFile(file);
+  }
+
+  function startLoadImageFromFile(file) {
+    // 超大图走主进程瓦片渲染（GPU 加速，内存恒定）
+    if (shouldUseRemote(file)) {
+      var p = null;
+      try { p = window.electronAPI.getPathForFile(file); } catch (e) { p = null; }
+      if (p) { loadRemoteImage(p, file.name, file); return; }
+      saveToTempThenRemote(file);
+      return;
+    }
+    loadImageFromFileLocal(file);
+  }
+
+  function loadImageFromFileLocal(file) {
+    if (isCad(file)) { loadCadLocal(file); return; }
     showLoading();
     if (isTiff(file)) {
       loadTiff(file);
@@ -2031,8 +3459,54 @@ body {
     }
   }
 
-  // 普通位图（JPG / PNG / WebP / BMP ...）走浏览器原生解码
+  // 本地拖拽 / 浏览器环境下打开 CAD 图纸
+  function loadCadLocal(file) {
+    var p = null;
+    try { p = window.electronAPI && window.electronAPI.getPathForFile ? window.electronAPI.getPathForFile(file) : null; } catch (e) { p = null; }
+    if (isDxf(file)) {
+      if (p) {
+        showLoading();
+        window.electronAPI.readFile(p).then(function (buf) { loadDxfFromBuffer(buf, file.name); })
+          .catch(function () { readLocalFile(); });
+      } else {
+        readLocalFile();
+      }
+      return;
+    }
+    // DWG：先转 DXF 再解析
+    if (p) { loadDwg(p, file.name); return; }
+    if (!window.electronAPI || !window.electronAPI.saveTemp) { toast('DWG 需要在桌面版中打开'); return; }
+    var rd = new FileReader();
+    showLoading();
+    rd.onload = function () {
+      window.electronAPI.saveTemp(file.name, rd.result).then(function (tmp) {
+        loadDwg(tmp, file.name);
+      }).catch(function () { hideLoading(); toast('文件处理失败'); });
+    };
+    rd.onerror = function () { hideLoading(); toast('文件读取失败'); };
+    rd.readAsArrayBuffer(file);
+
+    function readLocalFile() {
+      var r2 = new FileReader();
+      r2.onload = function () { loadDxfFromBuffer(r2.result, file.name); };
+      r2.onerror = function () { hideLoading(); toast('文件读取失败'); };
+      r2.readAsArrayBuffer(file);
+    }
+  }
+
+  // 普通位图（JPG / PNG / WebP / BMP ...）优先走 createImageBitmap 原生解码（离主线程、GPU 友好）
   function loadRaster(file) {
+    if (window.createImageBitmap) {
+      createImageBitmap(file).then(function (bmp) {
+        commitImage(bmp, file.name, bmp.width, bmp.height, null);
+      }).catch(function () {
+        if (!tryRemoteFallback(file)) loadRasterLegacy(file);
+      });
+    } else {
+      loadRasterLegacy(file);
+    }
+  }
+  function loadRasterLegacy(file) {
     var url = URL.createObjectURL(file);
     var tmp = new Image();
     tmp.onload = function () {
@@ -2040,6 +3514,7 @@ body {
     };
     tmp.onerror = function () {
       URL.revokeObjectURL(url);
+      if (tryRemoteFallback(file)) return;
       hideLoading();
       toast('图片加载失败');
     };
@@ -2108,31 +3583,18 @@ body {
     hideLoading();
     if (imgUrl) URL.revokeObjectURL(imgUrl);
     imgUrl = url;                 // TIFF 为 null（无需释放）
+    if (img && img !== source && img.close) { try { img.close(); } catch (e) {} }   // 释放上一张 ImageBitmap
     img = source;
+    releaseBitmap(tileBitmap);
+    remoteImg = null; tileBitmap = null; tileView = null;
+    if (overviewBitmap && overviewBitmap.close) { try { overviewBitmap.close(); } catch (e) {} }
+    overviewBitmap = null; overviewLoaded = false;
     imgW = w;
     imgH = h;
     currentImgName = name;
     dropHint.classList.add('hidden');
     floatToolbar.classList.remove('hidden');
-
-    var saved = peekSession();
-    var restored = false;
-    if (saved && saved.name === name && saved.w === w && saved.h === h) {
-      points = saved.points || [];
-      restored = points.length > 0;
-    } else {
-      points = [];
-    }
-    // 旧版文字字号迁移：旧版 size 为 0.4~6 的倍率，新版为像素字号
-    for (var mi = 0; mi < points.length; mi++) {
-      var mp = points[mi];
-      if (mp && mp.type === 'text' && typeof mp.size === 'number' && mp.size > 0 && mp.size <= 6) {
-        mp.size = Math.round(mp.size * TEXT_BASE);
-      }
-    }
-    undoStack = [];
-    renumber();
-    imageLayer = null; imageLayerView = null;
+    var restored = restoreSession(name, w, h);
     buildPreview();
     fit();
     saveState();
@@ -2176,6 +3638,10 @@ body {
     } else {
       rgba = UTIF.toRGBA8(ifd);
     }
+    // 释放解码出的原始像素数据（16-bit TIFF 一帧可达数百 MB，挂在 ifd 上不释放会随换图越堆越高）
+    for (var k = 0; k < ifds.length; k++) {
+      if (ifds[k] && ifds[k].data) ifds[k].data = null;
+    }
 
     var canvas = document.createElement('canvas');
     canvas.width = w; canvas.height = h;
@@ -2217,7 +3683,37 @@ body {
     return out;
   }
 
-  function openFile() { fileInput.click(); }
+  // 按扩展名分派已拿到的磁盘路径：CAD 图纸与位图/PDF 走各自不同的加载链路
+  function loadFromPath(p, name) {
+    var f = { name: name };
+    if (isDwg(f)) { loadDwg(p, name); return; }
+    if (isDxf(f)) {
+      showLoading();
+      window.electronAPI.readFile(p).then(function (buf) { loadDxfFromBuffer(buf, name); })
+        .catch(function (e) { hideLoading(); toast('文件读取失败：' + (e && e.message ? e.message : e)); });
+      return;
+    }
+    // sharp/libvips 不解码 PDF，从磁盘读回后交回前端 PDF.js
+    if (isPdf(f)) {
+      showLoading();
+      window.electronAPI.readFile(p).then(function (buf) {
+        loadPdf(new File([buf], name, { type: 'application/pdf' }));
+      }).catch(function (e) { hideLoading(); toast('文件读取失败：' + (e && e.message ? e.message : e)); });
+      return;
+    }
+    loadRemoteImage(p, name);
+  }
+
+  function openFile() {
+    // 桌面版统一走主进程系统对话框（打开前会先「静音」后台取瓦片，避免对话框卡死）
+    if (window.electronAPI && window.electronAPI.openImage) {
+      window.electronAPI.openImage().then(function (picked) {
+        if (picked && picked.path) loadFromPath(picked.path, picked.name);
+      }).catch(function () { fileInput.click(); });
+    } else {
+      fileInput.click();
+    }
+  }
 
   // ===== 事件绑定 =====
   fileInput.addEventListener('change', function (e) {
@@ -2227,7 +3723,19 @@ body {
   btnUndo.addEventListener('click', undo);
   btnReset.addEventListener('click', resetView);
   btnClear.addEventListener('click', clearAll);
+  btnCloseImg.addEventListener('click', closeImage);
   btnLabels.addEventListener('click', toggleLabels);
+  btnHighRes.addEventListener('click', toggleHighRes);
+  // CAD 背景切换：黑底贴近 CAD 习惯，白底方便打印/截图；切换后重绘概览与瓦片
+  btnCadDark.addEventListener('click', function () {
+    if (!vectorDoc) return;
+    vectorDoc.bgDark = !vectorDoc.bgDark;
+    buildVectorOverview();   // 概览底图重画
+    tileView = null;         // 让矢量瓦片失效，render 时会按新底色重绘
+    refreshUI();
+    render();
+    toast(vectorDoc.bgDark ? 'CAD 背景：黑底' : 'CAD 背景：白底');
+  });
   btnGrab.addEventListener('click', function () {
     panMode = !panMode;
     refreshUI();
@@ -2330,7 +3838,7 @@ body {
     ctxHit = -1;
   }
   canvas.addEventListener('contextmenu', function (e) {
-    if (!img) return;
+    if (!hasImage()) return;
     e.preventDefault();
     clearHover();
     var rect = canvas.getBoundingClientRect();
@@ -2380,6 +3888,17 @@ body {
           ctxColors.appendChild(b);
         })(order[ci]);
       }
+    }
+    // 分隔线只在「上下都还有可见项」时才显示：右键空白处只剩「取消」，
+    // 也不会出现两条挨着的横线（例如框标注时字号行与修改数量行之间）
+    var kids = ctxMenu.children, pendingSep = null, seenVisible = false;
+    for (var qi = 0; qi < kids.length; qi++) {
+      var el = kids[qi];
+      if (el.className.indexOf('ctx-sep') >= 0) { el.style.display = 'none'; pendingSep = el; continue; }
+      if (getComputedStyle(el).display === 'none') continue;
+      if (pendingSep && seenVisible) pendingSep.style.display = 'block';
+      pendingSep = null;
+      seenVisible = true;
     }
     ctxMenu.style.display = 'block';
     ctxMenu.style.left = e.clientX + 'px';
@@ -2434,7 +3953,11 @@ body {
   ctxDelete.addEventListener('click', function () {
     var hit = ctxHit;
     hideCtxMenu();
-    if (hit >= 0) deletePoint(hit);
+    if (hit >= 0 && points[hit]) {
+      showConfirm('删除标注', '确定删除该' + typeName(points[hit]) + '标注？', function () {
+        deletePoint(hit);
+      }, '删除');
+    }
     ctxHit = -1;
   });
   ctxCancel.addEventListener('click', function () {
@@ -2445,12 +3968,128 @@ body {
     if (!ctxMenu.contains(e.target)) hideCtxMenu();
   });
 
-  customColorInput.addEventListener('input', function () {
-    currentColor = customColorInput.value;
-    refreshUI();
+  // 颜色盘：预设色板 + 自定义入口，点「＋添加标记」后在标记表底部展开
+  function buildColorPalette() {
+    colorPalette.innerHTML = '';
+    for (var i = 0; i < PRESET_COLORS.length; i++) {
+      var sw = document.createElement('button');
+      sw.type = 'button';
+      sw.className = 'palette-swatch';
+      sw.style.background = PRESET_COLORS[i];
+      sw.setAttribute('data-hex', PRESET_COLORS[i]);
+      sw.title = PRESET_COLORS[i];
+      colorPalette.appendChild(sw);
+    }
+    var cu = document.createElement('button');
+    cu.type = 'button';
+    cu.className = 'palette-custom';
+    cu.title = '自定义颜色';
+    cu.textContent = '＋';
+    colorPalette.appendChild(cu);
+  }
+  buildColorPalette();
+  function closeColorPalette() { colorPalette.classList.remove('open'); }
+  function closeColorPicker() { colorPicker.classList.remove('open'); }
+  // 把浮层定位在标记表面板正下方（面板左侧对齐），下方空间不足时向上弹出
+  function positionFloating(el) {
+    var panel = document.getElementById('colorPanel');
+    var rect = panel.getBoundingClientRect();
+    var left = rect.left;
+    var top = rect.bottom + 8;
+    if (top + el.offsetHeight > window.innerHeight) {
+      top = Math.max(8, rect.top - el.offsetHeight - 8);
+    }
+    el.style.left = left + 'px';
+    el.style.top = top + 'px';
+  }
+  function openColorPalette() {
+    closeColorPicker();
+    colorPalette.classList.add('open');
+    positionFloating(colorPalette);
+  }
+  // 选定颜色后创建标记（若已存在则仅切换选中）并设为当前颜色
+  function addMarkerColor(hex) {
+    hex = String(hex || '').toLowerCase();
+    if (!hex) return;
+    var isNew = !colorMeta[hex];
+    setCurrentColor(hex);
+    if (isNew) toast('已添加标记「' + colorName(hex) + '」');
+  }
+
+  // 自定义 RGB 颜色选择面板：显示在标记表下方，替代系统选色器（系统选色器会遮挡标记表）
+  function rgbToHex(r, g, b) {
+    return '#' + [r, g, b].map(function (v) {
+      return ('0' + v.toString(16)).slice(-2);
+    }).join('');
+  }
+  function hexToRgb(hex) {
+    hex = String(hex || '').replace('#', '');
+    if (hex.length === 3) hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
+    if (!/^[0-9a-fA-F]{6}$/.test(hex)) return null;
+    return [
+      parseInt(hex.slice(0, 2), 16),
+      parseInt(hex.slice(2, 4), 16),
+      parseInt(hex.slice(4, 6), 16)
+    ];
+  }
+  function syncPickerFromSliders() {
+    var r = cpR.value | 0, g = cpG.value | 0, b = cpB.value | 0;
+    cpRN.value = r; cpGN.value = g; cpBN.value = b;
+    var hex = rgbToHex(r, g, b);
+    cpHex.value = hex.slice(1);
+    cpPreview.style.background = hex;
+  }
+  function syncPickerFromHex() {
+    var rgb = hexToRgb(cpHex.value);
+    if (!rgb) return;
+    cpR.value = rgb[0]; cpG.value = rgb[1]; cpB.value = rgb[2];
+    syncPickerFromSliders();
+  }
+  function openColorPicker() {
+    closeColorPalette();
+    colorPicker.classList.add('open');
+    var init = hexToRgb(currentColor) || [255, 77, 79];
+    cpR.value = init[0]; cpG.value = init[1]; cpB.value = init[2];
+    syncPickerFromSliders();
+    positionFloating(colorPicker);
+    setTimeout(function () { cpHex.focus(); cpHex.select(); }, 0);
+  }
+
+  btnAddColor.addEventListener('click', function (e) {
+    e.stopPropagation();
+    if (colorPalette.classList.contains('open')) closeColorPalette();
+    else openColorPalette();
   });
-  customColorInput.addEventListener('change', function () {
-    setCurrentColor(customColorInput.value);
+  colorPalette.addEventListener('click', function (e) {
+    var sw = e.target.closest('.palette-swatch');
+    if (sw) {
+      addMarkerColor(sw.getAttribute('data-hex'));
+      closeColorPalette();
+      return;
+    }
+    if (e.target.closest('.palette-custom')) openColorPicker();
+  });
+
+  // RGB 面板事件（滑块 / 数字输入 / hex 联动）
+  cpR.addEventListener('input', syncPickerFromSliders);
+  cpG.addEventListener('input', syncPickerFromSliders);
+  cpB.addEventListener('input', syncPickerFromSliders);
+  cpRN.addEventListener('input', function () { cpR.value = clamp(cpRN.value | 0, 0, 255); syncPickerFromSliders(); });
+  cpGN.addEventListener('input', function () { cpG.value = clamp(cpGN.value | 0, 0, 255); syncPickerFromSliders(); });
+  cpBN.addEventListener('input', function () { cpB.value = clamp(cpBN.value | 0, 0, 255); syncPickerFromSliders(); });
+  cpHex.addEventListener('input', syncPickerFromHex);
+  cpCancel.addEventListener('click', closeColorPicker);
+  cpOk.addEventListener('click', function () {
+    var rgb = hexToRgb(cpHex.value);
+    if (!rgb) { toast('请输入有效的颜色值（如 ff4d4f）'); return; }
+    addMarkerColor(rgbToHex(rgb[0], rgb[1], rgb[2]));
+    closeColorPicker();
+  });
+
+  // 点击浮层与「添加标记」按钮之外的区域时收起
+  window.addEventListener('click', function (e) {
+    if (!colorPalette.contains(e.target) && !btnAddColor.contains(e.target)) closeColorPalette();
+    if (!colorPicker.contains(e.target) && !colorPalette.contains(e.target) && !btnAddColor.contains(e.target)) closeColorPicker();
   });
   toolColorInput.addEventListener('input', function () {
     toolColor = toolColorInput.value;
@@ -2462,23 +4101,35 @@ body {
   });
 
   colorList.addEventListener('click', function (e) {
-    var nm = e.target.closest('.cname');
+    var row = e.target.closest('.color-row');
+    if (!row) return;
     var ren = e.target.closest('.rename-btn');
     var del = e.target.closest('.del-btn');
-    if (nm) {
-      setCurrentColor(nm.getAttribute('data-hex'));
-    } else if (ren) {
+    var rc = e.target.closest('.recolor');
+    if (ren) {
       startRename(ren.getAttribute('data-hex'));
     } else if (del) {
       removeColor(del.getAttribute('data-hex'));
+    } else if (!rc) {
+      // 点击整行任意区域（名称/序号/数量等）切换当前标记，颜色块仍用于改色
+      setCurrentColor(row.getAttribute('data-hex'));
     }
+  });
+  // 双击标记名称直接重命名（单击仍为切换选中）
+  colorList.addEventListener('dblclick', function (e) {
+    var nm = e.target.closest('.cname');
+    if (nm) startRename(nm.getAttribute('data-hex'));
   });
   colorList.addEventListener('change', function (e) {
     var rc = e.target.closest('.recolor');
     if (rc) recolor(rc.getAttribute('data-hex'), rc.value);
   });
 
-  dropHint.addEventListener('click', openFile);
+  // 只在虚线框（导入图片窗口 .file-upload-design）内点击才打开系统选择图片界面；
+  // dropHint 本身覆盖整个画布区，点虚线框外边的空白不触发，避免误触
+  dropHint.addEventListener('click', function (e) {
+    if (e.target.closest('.file-upload-design')) openFile();
+  });
 
   // 面板折叠
   document.getElementById('colorPanelHead').addEventListener('click', function () {
@@ -2488,14 +4139,14 @@ body {
     document.getElementById('statsPanel').classList.toggle('collapsed');
   });
 
-  // 拖拽上传
+  // 拖拽上传：只在中间的导入提示区（dropHint）接收文件，防止在工具栏/画布上误触导入
   window.addEventListener('dragover', function (e) { e.preventDefault(); });
   window.addEventListener('drop', function (e) { e.preventDefault(); });
-  mainEl.addEventListener('dragover', function (e) { e.preventDefault(); mainEl.classList.add('dragging'); });
-  mainEl.addEventListener('dragleave', function () { mainEl.classList.remove('dragging'); });
-  mainEl.addEventListener('drop', function (e) {
+  dropHint.addEventListener('dragover', function (e) { e.preventDefault(); dropHint.classList.add('dragging'); });
+  dropHint.addEventListener('dragleave', function (e) { if (!dropHint.contains(e.relatedTarget)) dropHint.classList.remove('dragging'); });
+  dropHint.addEventListener('drop', function (e) {
     e.preventDefault();
-    mainEl.classList.remove('dragging');
+    dropHint.classList.remove('dragging');
     var f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
     if (f) loadImageFromFile(f);
   });
@@ -2514,7 +4165,7 @@ body {
 
   // 鼠标滚轮缩放（以鼠标位置为中心）
   canvas.addEventListener('wheel', function (e) {
-    if (!img) return;
+    if (!hasImage()) return;
     e.preventDefault();
     var rect = canvas.getBoundingClientRect();
     zoomAt(e.clientX - rect.left, e.clientY - rect.top, e.deltaY < 0 ? 1.12 : 1 / 1.12);
@@ -2522,7 +4173,7 @@ body {
 
   // 指针：点击加点/删点，拖动平移
   canvas.addEventListener('pointerdown', function (e) {
-    if (!img) return;
+    if (!hasImage()) return;
     if (e.button === 2) return; // 右键交给 contextmenu 处理
     hideCtxMenu();
     clearHover();
@@ -2571,7 +4222,7 @@ body {
     try { canvas.setPointerCapture(e.pointerId); } catch (err) {}
   });
   canvas.addEventListener('pointermove', function (e) {
-    if (!drag) { if (img) updateHover(e); return; }
+    if (!drag) { if (hasImage()) updateHover(e); return; }
     var dx = e.clientX - drag.lastCx;
     var dy = e.clientY - drag.lastCy;
     if (Math.hypot(e.clientX - drag.cx, e.clientY - drag.cy) > 3) drag.moved = true;
@@ -2639,6 +4290,10 @@ body {
       }
     } else if (drag.mode === 'text') {
       if (!drag.moved && !spaceDown) openTextModal(drag.startIx, drag.startIy);
+      // 文字模式下拖动＝平移图片（与点标注模式一致）。这里必须提交平移：
+      // pointermove 已经给 canvas 加了 CSS translate，不提交的话 view 不会更新、
+      // transform 也不会清除，画面会一直停在被拖走的位置，且标注层与图片错位。
+      commitPan();
     } else {
       var clicked = !drag.moved;
       if (clicked && !spaceDown && drag.mode === 'add') {
@@ -2669,7 +4324,7 @@ body {
     clearHover();
   });
   canvas.addEventListener('dblclick', function (e) {
-    if (!img) return;
+    if (!hasImage()) return;
     var rect = canvas.getBoundingClientRect();
     if (hitTest(e.clientX - rect.left, e.clientY - rect.top) === -1) {
       if (lastColor) setCurrentColor(lastColor);
@@ -2729,6 +4384,16 @@ body {
   exitModal.addEventListener('click', function (e) {
     if (e.target === exitModal) closeExitModal();
   });
+  // 通用确认弹窗事件
+  confirmCancel.addEventListener('click', closeConfirm);
+  confirmOk.addEventListener('click', function () {
+    var cb = confirmCb;
+    closeConfirm();
+    if (cb) cb();
+  });
+  confirmModal.addEventListener('click', function (e) {
+    if (e.target === confirmModal) closeConfirm();
+  });
   // 拦截 F5 / Ctrl+R / Cmd+R，用自定义弹窗替代浏览器原生确认框
   window.addEventListener('keydown', function (e) {
     var isRefresh = (e.key === 'F5') ||
@@ -2739,19 +4404,55 @@ body {
     } else if (e.key === 'Escape' && exitModal.style.display === 'flex') {
       e.preventDefault();
       closeExitModal();
-    }
-  });
-  // 浏览器刷新按钮 / 关闭标签页 / Cmd+W 无法拦截，仍用原生确认框兜底
-  window.addEventListener('beforeunload', function (e) {
-    if (points.length > 0 && !allowUnload) {
+    } else if (e.key === 'Escape' && confirmModal.style.display === 'flex') {
       e.preventDefault();
-      e.returnValue = '';   // Chrome 需要设置 returnValue 才会弹出原生确认框
+      closeConfirm();
     }
   });
+  // 浏览器刷新按钮 / 关闭标签页 / Cmd+W 无法拦截，仍用原生确认框兜底。
+  // 桌面版（Electron）由主进程控制退出，这里不再拦截 beforeunload，
+  // 否则关闭窗口时会弹浏览器原生确认框，导致「关不掉」。
+  if (!(window.electronAPI && window.electronAPI.isElectron)) {
+    window.addEventListener('beforeunload', function (e) {
+      if (points.length > 0 && !allowUnload) {
+        e.preventDefault();
+        e.returnValue = '';   // Chrome 需要设置 returnValue 才会弹出原生确认框
+      }
+    });
+  }
 
   window.addEventListener('resize', resizeCanvas);
 
   // ===== 初始化 =====
+  // 桌面版（Electron）能力探测与菜单事件
+  if (window.electronAPI && window.electronAPI.isElectron) {
+    window.electronAPI.gpuInfo().then(function (info) {
+      sharpAvailable = !!info.sharpLoaded;
+    }).catch(function () { sharpAvailable = false; });
+    window.electronAPI.onMenuOpen(function (data) {
+      if (data && data.path) loadFromPath(data.path, data.name);
+    });
+    window.electronAPI.onMenuClose(function () { closeImage(); });
+    window.electronAPI.onGpuReport(function () { reportGpu(); });
+    // 主进程打开文件对话框前暂停后台取瓦片/金字塔，返回后恢复，避免解码抢 CPU 导致对话框卡死
+    if (window.electronAPI.onBgPause) window.electronAPI.onBgPause(function () { bgPaused = true; });
+    if (window.electronAPI.onBgResume) window.electronAPI.onBgResume(function () {
+      bgPaused = false;
+      if (remoteImg) requestTileIfNeeded();   // 对话框返回后补上被暂停的瓦片
+    });
+    // 关闭软件（点窗口 X / 菜单退出）防误触：无论有无标注都弹软件 UI 确认，避免误触秒退
+    if (window.electronAPI.onCloseRequest) {
+      window.electronAPI.onCloseRequest(function () {
+        var msg = points.length > 0
+          ? '当前有 ' + points.length + ' 个标注尚未导出，确定要退出吗？'
+          : '确定要退出软件吗？';
+        showConfirm('退出软件', msg, function () {
+          window.electronAPI.confirmClose();
+        }, '退出');
+      });
+    }
+  }
+
   loadSettings();
   refreshUI();
   resizeCanvas();
@@ -2759,7 +4460,7 @@ body {
   // 字体（Inter / Noto Sans SC）异步加载完成后重绘一次，确保文字测量与实际渲染一致，
   // 避免字体未就绪时用回退字体测量导致文字背景框/选中虚线框与文字错位
   if (document.fonts && document.fonts.ready) {
-    document.fonts.ready.then(function () { if (img) render(false); });
+    document.fonts.ready.then(function () { if (hasImage()) render(false); });
   }
 })();
 </script>
